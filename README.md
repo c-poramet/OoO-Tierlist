@@ -1,6 +1,6 @@
 # OoO Tierlist
 
-OoO Tierlist is a web-based application for creating, editing, and sharing ranking lists, themed around the 'OoO' (One on One) concept. The app provides a simple and interactive interface for ranking items visually, making it easy to organize and present your preferences.
+OoO Tierlist is a web-based application for creating, editing, and sharing ranking youtube films lists, themed around the 'OoO' (One on One) concept. The app provides a simple and interactive interface for ranking items visually, making it easy to organize and present your preferences.
 
 ## Getting Started
 1. **Clone or download this repository.** or go to the link https://c-poramet.github.io/OoO-Tierlist/
@@ -16,5 +16,5 @@ OoO Tierlist is a web-based application for creating, editing, and sharing ranki
 Simply open the `index.html` file in any modern web browser or go to the link https://c-poramet.github.io/OoO-Tierlist/. No installation or server required.
 
 ## Credits
-Created by Poramet C..
+Created by Poramet C.
 Icons and images are property of mine.
