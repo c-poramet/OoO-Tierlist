@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OoO (One on One) Tierlist</title>
+    <link rel="icon" type="image/x-icon" href="blueOoo.ico">
+    <link rel="apple-touch-icon" href="blueOoo.png">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="main-content">
+            <aside class="sidebar">
+                <header>
+                    <img src="blueOoo.png" alt="OoO Logo" style="height:48px;width:auto;margin-bottom:10px;filter:drop-shadow(0 2px 6px #007bff99);">
+                    <h1>OoO Tierlist</h1>
+                    <div class="subtitle">One on One Rankings for Youtube Films</div>
+                </header>
+                <div class="view-section">
+                    <h3>View Mode</h3>
+                    <div class="view-buttons">
+                        <button id="listViewBtn" class="btn btn-view active-view" title="List View">
+                            <span class="view-icon">☰</span>
+                            <span class="view-label">List</span>
+                        </button>
+                        <button id="treeViewBtn" class="btn btn-view" title="Tree View">
+                            <span class="view-icon">⊃</span>
+                            <span class="view-label">Tree</span>
+                        </button>
+                        <button id="gridViewBtn" class="btn btn-view" title="Grid View">
+                            <span class="view-icon">⊞</span>
+                            <span class="view-label">Grid</span>
+                        </button>
+                        <button id="eloViewBtn" class="btn btn-view" title="ELO Ratings">
+                            <span class="view-icon">�</span>
+                            <span class="view-label">ELO</span>
+                        </button>
+                        <button id="detailViewBtn" class="btn btn-view" title="Detail View">
+                            <span class="view-icon">🔍</span>
+                            <span class="view-label">Detail</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="controls">
+                    <button id="addFilmBtn" class="btn btn-primary">Add New Item</button>
+                    <button id="exportBtn" class="btn btn-secondary">Export Rankings</button>
+                    <button id="importBtn" class="btn btn-secondary">Import Rankings</button>
+                    <input type="file" id="importFile" accept=".json" style="display: none;">
+                </div>
+            </aside>
+
+            <main class="rankings">
+                <div id="rankingsContainer">
+                    <h2>OoO Rankings</h2>
+                    <div id="filmsList" class="films-list">
+                        <p class="empty-state">No items added yet. Click "Add New Item" to get started!</p>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Floating Add Button -->
+    <button id="floatingAddBtn" class="floating-add-btn" title="Add New Item">
+        <span>+</span>
+    </button>
+
+    <!-- Add Item Modal -->
+    <div id="addFilmModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add New Item</h2>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="filmTitle">Item Title:</label>
+                    <input type="text" id="filmTitle" placeholder="Enter item title">
+                </div>
+                <div class="form-group">
+                    <label for="videoLink">Media Link (YouTube, Vimeo, etc.):</label>
+                    <input type="url" id="videoLink" placeholder="https://youtube.com/watch?v=...">
+                    <div style="text-align: center; margin-top: 10px;">
+                        <button id="autoFillBtn" class="btn btn-small">Auto-fill from Link</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="customImage">Custom Thumbnail Image:</label>
+                    <input type="url" id="customImage" placeholder="https://example.com/image.jpg (optional)">
+                    <div class="thumbnail-preview" id="thumbnailPreview">
+                        <div class="preview-placeholder">Thumbnail preview will appear here</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelBtn" class="btn btn-secondary">Cancel</button>
+                <button id="confirmAddBtn" class="btn btn-primary">Add Item</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Comparison Modal -->
+    <div id="comparisonModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="comparisonTitle">Film Comparison</h2>
+            </div>
+            <div class="modal-body">
+                <div class="comparison-content">
+                    <div class="film-comparison">
+                        <div class="film-card clickable-card" id="newFilmCard">
+                            <h3 id="newFilmTitle">New Film</h3>
+                            <div id="newFilmThumbnail" class="thumbnail"></div>
+                        </div>
+                        
+                        <div class="film-card clickable-card" id="existingFilmCard">
+                            <h3 id="existingFilmTitle">Existing Film</h3>
+                            <div id="existingFilmThumbnail" class="thumbnail"></div>
+                        </div>
+                    </div>
+                    <p id="comparisonQuestion" class="comparison-question">Click on the better film</p>
+                    <div class="comparison-controls">
+                        <button id="undoComparisonBtn" class="btn btn-secondary" style="display: none;" title="Ctrl+Z">
+                            ↶ Undo Last Choice
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
