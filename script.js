@@ -406,15 +406,18 @@ class FilmRankingApp {
     async startComparisons(newFilm) {
         this.comparisonQueue = [];
         this.comparisonHistory = []; // Reset comparison history for new film
-        
-        // Add overall comparisons against each existing film
-        for (const existingFilm of this.films) {
+
+        // Sort existing films by ELO descending (highest first)
+        const sortedFilms = [...this.films].sort((a, b) => (b.eloRating || 1200) - (a.eloRating || 1200));
+
+        // Add overall comparisons against each existing film in sorted order
+        for (const existingFilm of sortedFilms) {
             this.comparisonQueue.push({
                 newFilm: newFilm,
                 existingFilm: existingFilm
             });
         }
-        
+
         // Start the comparison process
         this.processNextComparison();
     }
