@@ -1343,8 +1343,10 @@ class FilmRankingApp {
             film.eloRating = 1200; // Reset for recalculation
         });
 
-        // Collect all comparisons and sort by timestamp (film ID as proxy)
+        // Collect all comparisons - ensure we have all unique matchups
         const allComparisons = [];
+        const processedPairs = new Set();
+        
         this.films.forEach(filmA => {
             if (!filmA.comparisons) return;
             
@@ -1352,18 +1354,23 @@ class FilmRankingApp {
                 const filmB = this.films.find(f => f.id == filmBId);
                 if (!filmB) return;
                 
-                const result = filmA.comparisons[filmBId];
-                if (result === 'win') {
-                    // Only add each comparison once (avoid duplicates)
-                    const comparisonExists = allComparisons.some(comp => 
-                        (comp.winnerA === filmA && comp.loserB === filmB) ||
-                        (comp.winnerA === filmB && comp.loserB === filmA)
-                    );
+                // Create a unique pair identifier (always use smaller ID first)
+                const pairId = `${Math.min(filmA.id, filmB.id)}-${Math.max(filmA.id, filmB.id)}`;
+                
+                if (!processedPairs.has(pairId)) {
+                    processedPairs.add(pairId);
                     
-                    if (!comparisonExists) {
+                    const result = filmA.comparisons[filmBId];
+                    if (result === 'win') {
                         allComparisons.push({
                             winnerA: filmA,
                             loserB: filmB,
+                            timestamp: Math.min(filmA.id, filmB.id) // Use lower ID for consistent ordering
+                        });
+                    } else if (result === 'loss') {
+                        allComparisons.push({
+                            winnerA: filmB,
+                            loserB: filmA,
                             timestamp: Math.min(filmA.id, filmB.id) // Use lower ID for consistent ordering
                         });
                     }
@@ -1374,18 +1381,32 @@ class FilmRankingApp {
         // Sort comparisons by timestamp to replay them in order
         allComparisons.sort((a, b) => a.timestamp - b.timestamp);
 
-        // Apply ELO calculations in chronological order
-        allComparisons.forEach(comparison => {
-            const { winnerA, loserB } = comparison;
-            const ratingA = winnerA.eloRating;
-            const ratingB = loserB.eloRating;
-            
-            // Winner gets score 1, loser gets score 0
-            const newRatingA = this.calculateEloRating(ratingA, ratingB, 1);
-            const newRatingB = this.calculateEloRating(ratingB, ratingA, 0);
-            
-            winnerA.eloRating = newRatingA;
-            loserB.eloRating = newRatingB;
+        // Apply ELO calculations multiple times to ensure convergence
+        // This helps with transitive relationships (A beats B, B beats C, etc.)
+        for (let iteration = 0; iteration < 3; iteration++) {
+            allComparisons.forEach(comparison => {
+                const { winnerA, loserB } = comparison;
+                const ratingA = winnerA.eloRating;
+                const ratingB = loserB.eloRating;
+                
+                // Winner gets score 1, loser gets score 0
+                const newRatingA = this.calculateEloRating(ratingA, ratingB, 1, 16); // Lower K-factor for stability
+                const newRatingB = this.calculateEloRating(ratingB, ratingA, 0, 16);
+                
+                winnerA.eloRating = newRatingA;
+                loserB.eloRating = newRatingB;
+            });
+        }
+        
+        // Final validation: ensure ELO roughly corresponds to win percentages
+        this.films.forEach(film => {
+            const winRate = this.calculateWinRate(film);
+            // Adjust ELO slightly based on win rate to prevent major discrepancies
+            if (winRate > 75 && film.eloRating < 1300) {
+                film.eloRating = Math.max(film.eloRating, 1300);
+            } else if (winRate < 25 && film.eloRating > 1100) {
+                film.eloRating = Math.min(film.eloRating, 1100);
+            }
         });
     }
 
