@@ -1607,8 +1607,8 @@ class FilmRankingApp {
             return;
         }
         
-        if (isNaN(columns) || columns < 1 || columns > 6) {
-            alert('Please enter a valid number of columns between 1 and 6.');
+        if (isNaN(columns) || columns < 1) {
+            alert('Please enter a valid number of columns (minimum 1).');
             return;
         }
         
@@ -1748,7 +1748,7 @@ class FilmRankingApp {
             border-top: 2px solid #dee2e6;
             padding-top: 20px;
         `;
-        qrTitle.textContent = `Film Links (QR Codes) - ${filmsWithLinks.length} available`;
+        qrTitle.textContent = 'Video Links (QR Codes)';
         container.appendChild(qrTitle);
 
         // Create QR codes grid
