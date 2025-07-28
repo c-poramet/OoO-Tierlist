@@ -11,6 +11,26 @@ class FilmRankingApp {
         this.loadData();
         this.setupEventListeners();
         this.updateDisplay();
+        
+        // Check QR code library availability
+        this.checkQRCodeLibrary();
+    }
+    
+    checkQRCodeLibrary() {
+        // Add a small delay to ensure libraries are loaded
+        setTimeout(() => {
+            if (typeof window.QRCode === 'undefined') {
+                console.warn('QRCode library not available from window.QRCode');
+                // Check if it's available as a global
+                if (typeof QRCode === 'undefined') {
+                    console.warn('QRCode library not available globally either');
+                } else {
+                    console.log('QRCode library found globally');
+                }
+            } else {
+                console.log('QRCode library loaded successfully on window');
+            }
+        }, 500); // Increased delay
     }
 
     setupEventListeners() {
@@ -29,7 +49,11 @@ class FilmRankingApp {
         document.getElementById('exportBtn').addEventListener('click', () => this.exportRankings());
         
         // Export as Image button
-        document.getElementById('exportImageBtn').addEventListener('click', () => this.exportAsImage());
+        document.getElementById('exportImageBtn').addEventListener('click', () => this.showExportSettingsModal());
+        
+        // Export settings modal events
+        document.getElementById('cancelExportBtn').addEventListener('click', () => this.hideExportSettingsModal());
+        document.getElementById('confirmExportBtn').addEventListener('click', () => this.handleExportConfirm());
         
         // Import button and file input
         document.getElementById('importBtn').addEventListener('click', () => this.showImportDialog());
@@ -1537,26 +1561,67 @@ class FilmRankingApp {
         this.showSuccessMessage('Rankings exported successfully!');
     }
 
-    exportAsImage() {
+    showExportSettingsModal() {
         if (this.films.length === 0) {
             alert('No films to export. Please add some films first.');
             return;
         }
 
-        const topN = prompt(`How many top films would you like to export as an image? (1-${this.films.length})`, Math.min(10, this.films.length));
+        const modal = document.getElementById('exportSettingsModal');
+        const topNInput = document.getElementById('topNInput');
+        const maxFilmsHint = document.getElementById('maxFilmsHint');
         
-        if (topN === null) return; // User cancelled
+        // Set up the form
+        topNInput.max = this.films.length;
+        topNInput.value = Math.min(10, this.films.length);
+        maxFilmsHint.textContent = this.films.length;
         
-        const n = parseInt(topN);
-        if (isNaN(n) || n < 1 || n > this.films.length) {
-            alert(`Please enter a valid number between 1 and ${this.films.length}.`);
-            return;
-        }
-
-        this.generateTopNImage(n);
+        modal.style.display = 'block';
+        
+        // Close modal when clicking outside
+        modal.onclick = (e) => {
+            if (e.target === modal) {
+                this.hideExportSettingsModal();
+            }
+        };
+        
+        // Close modal with X button
+        modal.querySelector('.close').onclick = () => this.hideExportSettingsModal();
     }
 
-    async generateTopNImage(n) {
+    hideExportSettingsModal() {
+        document.getElementById('exportSettingsModal').style.display = 'none';
+    }
+
+    handleExportConfirm() {
+        const topNInput = document.getElementById('topNInput');
+        const gridColumnsInput = document.getElementById('gridColumnsInput');
+        const includeQRCodes = document.getElementById('includeQRCodes').checked;
+        
+        const n = parseInt(topNInput.value);
+        const columns = parseInt(gridColumnsInput.value);
+        
+        // Validation
+        if (isNaN(n) || n < 1 || n > this.films.length) {
+            alert(`Please enter a valid number of films between 1 and ${this.films.length}.`);
+            return;
+        }
+        
+        if (isNaN(columns) || columns < 1) {
+            alert('Please enter a valid number of columns (minimum 1).');
+            return;
+        }
+        
+        this.hideExportSettingsModal();
+        this.generateTopNImage(n, columns, includeQRCodes);
+    }
+
+    exportAsImage() {
+        // This method is now replaced by showExportSettingsModal
+        this.showExportSettingsModal();
+    }
+
+    async generateTopNImage(n, columns = 2, includeQRCodes = false) {
         // Recalculate ELO to ensure we have the latest rankings
         this.recalculateEloRatings();
         
@@ -1566,11 +1631,13 @@ class FilmRankingApp {
 
         // Create a temporary container for rendering
         const tempContainer = document.createElement('div');
+        const cardWidth = 280; // Fixed card width
+        const containerWidth = Math.max(600, columns * cardWidth + (columns - 1) * 20 + 40); // Dynamic width based on columns
         tempContainer.style.cssText = `
             position: absolute;
             top: -10000px;
             left: -10000px;
-            width: 400px;
+            width: ${containerWidth}px;
             background: #f8f9fa;
             padding: 20px;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -1588,20 +1655,31 @@ class FilmRankingApp {
         title.textContent = `Top ${n} OoO Rankings`;
         tempContainer.appendChild(title);
 
-        // Generate cards for each film
+        // Create grid container for films
+        const gridContainer = document.createElement('div');
+        gridContainer.style.cssText = `
+            display: grid;
+            grid-template-columns: repeat(${columns}, ${cardWidth}px);
+            gap: 20px;
+            margin-bottom: 20px;
+            justify-content: center;
+        `;
+        tempContainer.appendChild(gridContainer);
+
+        // Generate cards for each film in grid layout
         for (let i = 0; i < topFilms.length; i++) {
             const film = topFilms[i];
             const rank = i + 1;
             
             const card = await this.createImageDetailCard(film, rank);
-            tempContainer.appendChild(card);
-            
-            // Add spacing between cards except for the last one
-            if (i < topFilms.length - 1) {
-                const spacer = document.createElement('div');
-                spacer.style.height = '20px';
-                tempContainer.appendChild(spacer);
-            }
+            gridContainer.appendChild(card);
+        }
+
+        // Add QR codes section if requested
+        if (includeQRCodes) {
+            // Add a delay to ensure QR library is fully loaded
+            await new Promise(resolve => setTimeout(resolve, 500));
+            await this.addQRCodesSection(tempContainer, topFilms);
         }
 
         document.body.appendChild(tempContainer);
@@ -1620,7 +1698,9 @@ class FilmRankingApp {
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `top-${n}-ooo-rankings-${new Date().toISOString().split('T')[0]}.png`;
+                const timestamp = new Date().toISOString().split('T')[0];
+                const qrSuffix = includeQRCodes ? '-with-qr' : '';
+                a.download = `top-${n}-ooo-rankings-${columns}col${qrSuffix}-${timestamp}.png`;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
@@ -1637,6 +1717,245 @@ class FilmRankingApp {
         }
     }
 
+    async addQRCodesSection(container, films) {
+        // Filter films that have video links
+        const filmsWithLinks = films.filter(film => film.videoLink || film.link);
+        
+        if (filmsWithLinks.length === 0) {
+            // Add a message if no films have links
+            const noLinksMessage = document.createElement('div');
+            noLinksMessage.style.cssText = `
+                text-align: center;
+                font-size: 16px;
+                color: #6c757d;
+                margin: 30px 0 20px 0;
+                padding: 20px;
+                border-top: 2px solid #dee2e6;
+            `;
+            noLinksMessage.textContent = 'No films with video links available for QR codes';
+            container.appendChild(noLinksMessage);
+            return;
+        }
+
+        // Add section title
+        const qrTitle = document.createElement('div');
+        qrTitle.style.cssText = `
+            text-align: center;
+            font-size: 20px;
+            font-weight: bold;
+            margin: 30px 0 20px 0;
+            color: #212529;
+            border-top: 2px solid #dee2e6;
+            padding-top: 20px;
+        `;
+        qrTitle.textContent = 'Video Links (QR Codes)';
+        container.appendChild(qrTitle);
+
+        // Create QR codes grid
+        const qrGrid = document.createElement('div');
+        qrGrid.style.cssText = `
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        `;
+        container.appendChild(qrGrid);
+
+        // Add QR codes for films with links
+        for (let i = 0; i < films.length; i++) {
+            const film = films[i];
+            // Check both possible property names for the video link
+            const videoLink = film.videoLink || film.link;
+            if (videoLink) {
+                console.log(`Generating QR code for film: ${film.title}, Link: ${videoLink}`);
+                const qrCard = await this.createQRCard(film, i + 1);
+                qrGrid.appendChild(qrCard);
+            }
+        }
+    }
+
+    async createQRCard(film, rank) {
+        const qrCard = document.createElement('div');
+        qrCard.style.cssText = `
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 15px;
+            text-align: center;
+            border: 1px solid #dee2e6;
+        `;
+
+        // Get the video link from either property
+        const videoLink = film.videoLink || film.link;
+
+        if (!videoLink) {
+            // No video link available
+            const noLinkDiv = document.createElement('div');
+            noLinkDiv.style.cssText = `
+                width: 120px;
+                height: 120px;
+                background: #f8f9fa;
+                border: 2px dashed #dee2e6;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 12px;
+                color: #6c757d;
+                margin: 0 auto;
+            `;
+            noLinkDiv.textContent = 'No Link';
+            qrCard.appendChild(noLinkDiv);
+        } else {
+            // Try to create QR code
+            const qrContainer = document.createElement('div');
+            qrContainer.style.cssText = `
+                width: 120px;
+                height: 120px;
+                margin: 0 auto;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            `;
+
+            try {
+                // Check for QRCode library in multiple ways
+                let QRCodeLib = null;
+                if (typeof window.QRCode !== 'undefined') {
+                    QRCodeLib = window.QRCode;
+                } else if (typeof QRCode !== 'undefined') {
+                    QRCodeLib = QRCode;
+                } else {
+                    // Fallback: Use QR Server API
+                    const qrImage = document.createElement('img');
+                    qrImage.style.cssText = `
+                        width: 120px;
+                        height: 120px;
+                        border: 1px solid #dee2e6;
+                    `;
+                    qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(videoLink)}`;
+                    qrImage.alt = 'QR Code';
+                    
+                    // Handle image load errors
+                    qrImage.onerror = () => {
+                        qrImage.style.display = 'none';
+                        const fallbackDiv = document.createElement('div');
+                        fallbackDiv.style.cssText = `
+                            width: 120px;
+                            height: 120px;
+                            background: #fff3cd;
+                            border: 2px dashed #ffc107;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-size: 10px;
+                            color: #856404;
+                            text-align: center;
+                        `;
+                        fallbackDiv.textContent = 'QR Failed';
+                        qrContainer.appendChild(fallbackDiv);
+                    };
+                    
+                    qrContainer.appendChild(qrImage);
+                    qrCard.appendChild(qrContainer);
+                    
+                    // Add film title and rank
+                    const qrLabel = document.createElement('div');
+                    qrLabel.style.cssText = `
+                        margin-top: 10px;
+                        font-size: 12px;
+                        font-weight: bold;
+                        color: #212529;
+                        word-wrap: break-word;
+                        overflow-wrap: break-word;
+                        max-width: 150px;
+                        margin-left: auto;
+                        margin-right: auto;
+                    `;
+                    qrLabel.textContent = `#${rank} ${film.title}`;
+                    qrCard.appendChild(qrLabel);
+                    
+                    return qrCard;
+                }
+
+                // Wait a bit more to ensure the library is fully loaded
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                // Create canvas for QR code
+                const qrCanvas = document.createElement('canvas');
+                
+                // Use the QR code library
+                await new Promise((resolve, reject) => {
+                    QRCodeLib.toCanvas(qrCanvas, videoLink, {
+                        width: 120,
+                        height: 120,
+                        margin: 1,
+                        color: {
+                            dark: '#000000',
+                            light: '#FFFFFF'
+                        },
+                        errorCorrectionLevel: 'M'
+                    }, (error) => {
+                        if (error) {
+                            reject(error);
+                        } else {
+                            resolve();
+                        }
+                    });
+                });
+
+                qrContainer.appendChild(qrCanvas);
+                
+            } catch (error) {
+                console.error('QR Code generation error for film:', film.title, 'Error:', error);
+                
+                // Create error placeholder with more specific error info
+                const errorDiv = document.createElement('div');
+                errorDiv.style.cssText = `
+                    width: 120px;
+                    height: 120px;
+                    background: #fff3cd;
+                    border: 2px dashed #ffc107;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 10px;
+                    color: #856404;
+                    text-align: center;
+                    padding: 5px;
+                `;
+                
+                // Show different messages based on error type
+                if (error.message.includes('QRCode library not found')) {
+                    errorDiv.innerHTML = `<div>Library</div><div>Loading...</div>`;
+                } else {
+                    errorDiv.innerHTML = `<div>QR Error</div><div>${error.message?.slice(0, 15) || 'Unknown'}</div>`;
+                }
+                
+                qrContainer.appendChild(errorDiv);
+            }
+
+            qrCard.appendChild(qrContainer);
+        }
+
+        // Add film title and rank
+        const qrLabel = document.createElement('div');
+        qrLabel.style.cssText = `
+            margin-top: 10px;
+            font-size: 12px;
+            font-weight: bold;
+            color: #212529;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            max-width: 150px;
+            margin-left: auto;
+            margin-right: auto;
+        `;
+        qrLabel.textContent = `#${rank} ${film.title}`;
+        qrCard.appendChild(qrLabel);
+
+        return qrCard;
+    }
+
     async createImageDetailCard(film, rank) {
         const eloRating = Math.round(film.eloRating || 1200);
         const eloClass = this.getEloRatingClass(eloRating);
@@ -1649,9 +1968,13 @@ class FilmRankingApp {
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             overflow: hidden;
             border: 1px solid #dee2e6;
+            width: 280px;
+            height: 400px;
+            display: flex;
+            flex-direction: column;
         `;
 
-        // Card header
+        // Card header - fixed height
         const header = document.createElement('div');
         header.style.cssText = `
             background: linear-gradient(135deg, #007bff, #0056b3);
@@ -1660,6 +1983,8 @@ class FilmRankingApp {
             display: flex;
             align-items: center;
             justify-content: space-between;
+            height: 70px;
+            flex-shrink: 0;
         `;
 
         const rankElement = document.createElement('div');
@@ -1669,16 +1994,21 @@ class FilmRankingApp {
             background: rgba(255,255,255,0.2);
             padding: 8px 12px;
             border-radius: 8px;
+            min-width: 60px;
+            text-align: center;
         `;
         rankElement.textContent = `#${rank}`;
 
         const titleElement = document.createElement('div');
         titleElement.style.cssText = `
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 600;
             flex: 1;
             margin-left: 15px;
             text-align: center;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         `;
         titleElement.textContent = film.title;
 
@@ -1686,26 +2016,40 @@ class FilmRankingApp {
         header.appendChild(titleElement);
         card.appendChild(header);
 
-        // Thumbnail
-        if (film.thumbnailUrl) {
-            const thumbnailContainer = document.createElement('div');
-            thumbnailContainer.style.cssText = `
-                height: 200px;
+        // Thumbnail - fixed height
+        const thumbnailContainer = document.createElement('div');
+        thumbnailContainer.style.cssText = `
+            height: 160px;
+            background-color: #f8f9fa;
+            flex-shrink: 0;
+            ${film.thumbnailUrl ? `
                 background-image: url(${film.thumbnailUrl});
                 background-size: cover;
                 background-position: center;
-                background-color: #f8f9fa;
-            `;
-            card.appendChild(thumbnailContainer);
+            ` : `
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: #6c757d;
+                font-size: 14px;
+            `}
+        `;
+        
+        if (!film.thumbnailUrl) {
+            thumbnailContainer.textContent = 'No Thumbnail';
         }
+        
+        card.appendChild(thumbnailContainer);
 
-        // Stats section
+        // Stats section - remaining space
         const statsContainer = document.createElement('div');
         statsContainer.style.cssText = `
-            padding: 20px;
+            padding: 15px;
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 15px;
+            gap: 10px;
+            flex: 1;
+            align-items: start;
         `;
 
         const stats = [
@@ -1719,24 +2063,28 @@ class FilmRankingApp {
             const statElement = document.createElement('div');
             statElement.style.cssText = `
                 text-align: center;
-                padding: 12px;
+                padding: 8px;
                 background: #f8f9fa;
-                border-radius: 8px;
+                border-radius: 6px;
                 border: 1px solid #dee2e6;
+                height: 50px;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
             `;
 
             const label = document.createElement('div');
             label.style.cssText = `
-                font-size: 12px;
+                font-size: 10px;
                 color: #6c757d;
-                margin-bottom: 4px;
+                margin-bottom: 2px;
                 font-weight: 500;
             `;
             label.textContent = stat.label;
 
             const value = document.createElement('div');
             value.style.cssText = `
-                font-size: 16px;
+                font-size: 14px;
                 font-weight: bold;
                 color: #212529;
             `;
