@@ -11,6 +11,26 @@ class FilmRankingApp {
         this.loadData();
         this.setupEventListeners();
         this.updateDisplay();
+        
+        // Check QR code library availability
+        this.checkQRCodeLibrary();
+    }
+    
+    checkQRCodeLibrary() {
+        // Add a small delay to ensure libraries are loaded
+        setTimeout(() => {
+            if (typeof window.QRCode === 'undefined') {
+                console.warn('QRCode library not available from window.QRCode');
+                // Check if it's available as a global
+                if (typeof QRCode === 'undefined') {
+                    console.warn('QRCode library not available globally either');
+                } else {
+                    console.log('QRCode library found globally');
+                }
+            } else {
+                console.log('QRCode library loaded successfully on window');
+            }
+        }, 500); // Increased delay
     }
 
     setupEventListeners() {
@@ -1657,6 +1677,8 @@ class FilmRankingApp {
 
         // Add QR codes section if requested
         if (includeQRCodes) {
+            // Add a delay to ensure QR library is fully loaded
+            await new Promise(resolve => setTimeout(resolve, 500));
             await this.addQRCodesSection(tempContainer, topFilms);
         }
 
@@ -1696,6 +1718,25 @@ class FilmRankingApp {
     }
 
     async addQRCodesSection(container, films) {
+        // Filter films that have video links
+        const filmsWithLinks = films.filter(film => film.videoLink || film.link);
+        
+        if (filmsWithLinks.length === 0) {
+            // Add a message if no films have links
+            const noLinksMessage = document.createElement('div');
+            noLinksMessage.style.cssText = `
+                text-align: center;
+                font-size: 16px;
+                color: #6c757d;
+                margin: 30px 0 20px 0;
+                padding: 20px;
+                border-top: 2px solid #dee2e6;
+            `;
+            noLinksMessage.textContent = 'No films with video links available for QR codes';
+            container.appendChild(noLinksMessage);
+            return;
+        }
+
         // Add section title
         const qrTitle = document.createElement('div');
         qrTitle.style.cssText = `
@@ -1707,7 +1748,7 @@ class FilmRankingApp {
             border-top: 2px solid #dee2e6;
             padding-top: 20px;
         `;
-        qrTitle.textContent = 'Film Links (QR Codes)';
+        qrTitle.textContent = `Film Links (QR Codes) - ${filmsWithLinks.length} available`;
         container.appendChild(qrTitle);
 
         // Create QR codes grid
@@ -1719,11 +1760,13 @@ class FilmRankingApp {
         `;
         container.appendChild(qrGrid);
 
+        // Add QR codes for films with links
         for (let i = 0; i < films.length; i++) {
             const film = films[i];
             // Check both possible property names for the video link
             const videoLink = film.videoLink || film.link;
             if (videoLink) {
+                console.log(`Generating QR code for film: ${film.title}, Link: ${videoLink}`);
                 const qrCard = await this.createQRCard(film, i + 1);
                 qrGrid.appendChild(qrCard);
             }
@@ -1744,27 +1787,10 @@ class FilmRankingApp {
         // Get the video link from either property
         const videoLink = film.videoLink || film.link;
 
-        // Create QR code canvas
-        const qrCanvas = document.createElement('canvas');
-        try {
-            if (typeof QRCode !== 'undefined' && videoLink) {
-                await QRCode.toCanvas(qrCanvas, videoLink, {
-                    width: 120,
-                    height: 120,
-                    margin: 1,
-                    color: {
-                        dark: '#000000',
-                        light: '#FFFFFF'
-                    }
-                });
-                qrCard.appendChild(qrCanvas);
-            } else {
-                throw new Error('QRCode library not available or no video link');
-            }
-        } catch (error) {
-            console.error('QR Code generation error:', error);
-            const errorText = document.createElement('div');
-            errorText.style.cssText = `
+        if (!videoLink) {
+            // No video link available
+            const noLinkDiv = document.createElement('div');
+            noLinkDiv.style.cssText = `
                 width: 120px;
                 height: 120px;
                 background: #f8f9fa;
@@ -1776,8 +1802,139 @@ class FilmRankingApp {
                 color: #6c757d;
                 margin: 0 auto;
             `;
-            errorText.textContent = videoLink ? 'QR Error' : 'No Link';
-            qrCard.appendChild(errorText);
+            noLinkDiv.textContent = 'No Link';
+            qrCard.appendChild(noLinkDiv);
+        } else {
+            // Try to create QR code
+            const qrContainer = document.createElement('div');
+            qrContainer.style.cssText = `
+                width: 120px;
+                height: 120px;
+                margin: 0 auto;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            `;
+
+            try {
+                // Check for QRCode library in multiple ways
+                let QRCodeLib = null;
+                if (typeof window.QRCode !== 'undefined') {
+                    QRCodeLib = window.QRCode;
+                } else if (typeof QRCode !== 'undefined') {
+                    QRCodeLib = QRCode;
+                } else {
+                    // Fallback: Use QR Server API
+                    const qrImage = document.createElement('img');
+                    qrImage.style.cssText = `
+                        width: 120px;
+                        height: 120px;
+                        border: 1px solid #dee2e6;
+                    `;
+                    qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(videoLink)}`;
+                    qrImage.alt = 'QR Code';
+                    
+                    // Handle image load errors
+                    qrImage.onerror = () => {
+                        qrImage.style.display = 'none';
+                        const fallbackDiv = document.createElement('div');
+                        fallbackDiv.style.cssText = `
+                            width: 120px;
+                            height: 120px;
+                            background: #fff3cd;
+                            border: 2px dashed #ffc107;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-size: 10px;
+                            color: #856404;
+                            text-align: center;
+                        `;
+                        fallbackDiv.textContent = 'QR Failed';
+                        qrContainer.appendChild(fallbackDiv);
+                    };
+                    
+                    qrContainer.appendChild(qrImage);
+                    qrCard.appendChild(qrContainer);
+                    
+                    // Add film title and rank
+                    const qrLabel = document.createElement('div');
+                    qrLabel.style.cssText = `
+                        margin-top: 10px;
+                        font-size: 12px;
+                        font-weight: bold;
+                        color: #212529;
+                        word-wrap: break-word;
+                        overflow-wrap: break-word;
+                        max-width: 150px;
+                        margin-left: auto;
+                        margin-right: auto;
+                    `;
+                    qrLabel.textContent = `#${rank} ${film.title}`;
+                    qrCard.appendChild(qrLabel);
+                    
+                    return qrCard;
+                }
+
+                // Wait a bit more to ensure the library is fully loaded
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                // Create canvas for QR code
+                const qrCanvas = document.createElement('canvas');
+                
+                // Use the QR code library
+                await new Promise((resolve, reject) => {
+                    QRCodeLib.toCanvas(qrCanvas, videoLink, {
+                        width: 120,
+                        height: 120,
+                        margin: 1,
+                        color: {
+                            dark: '#000000',
+                            light: '#FFFFFF'
+                        },
+                        errorCorrectionLevel: 'M'
+                    }, (error) => {
+                        if (error) {
+                            reject(error);
+                        } else {
+                            resolve();
+                        }
+                    });
+                });
+
+                qrContainer.appendChild(qrCanvas);
+                
+            } catch (error) {
+                console.error('QR Code generation error for film:', film.title, 'Error:', error);
+                
+                // Create error placeholder with more specific error info
+                const errorDiv = document.createElement('div');
+                errorDiv.style.cssText = `
+                    width: 120px;
+                    height: 120px;
+                    background: #fff3cd;
+                    border: 2px dashed #ffc107;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 10px;
+                    color: #856404;
+                    text-align: center;
+                    padding: 5px;
+                `;
+                
+                // Show different messages based on error type
+                if (error.message.includes('QRCode library not found')) {
+                    errorDiv.innerHTML = `<div>Library</div><div>Loading...</div>`;
+                } else {
+                    errorDiv.innerHTML = `<div>QR Error</div><div>${error.message?.slice(0, 15) || 'Unknown'}</div>`;
+                }
+                
+                qrContainer.appendChild(errorDiv);
+            }
+
+            qrCard.appendChild(qrContainer);
         }
 
         // Add film title and rank
@@ -1788,6 +1945,10 @@ class FilmRankingApp {
             font-weight: bold;
             color: #212529;
             word-wrap: break-word;
+            overflow-wrap: break-word;
+            max-width: 150px;
+            margin-left: auto;
+            margin-right: auto;
         `;
         qrLabel.textContent = `#${rank} ${film.title}`;
         qrCard.appendChild(qrLabel);
