@@ -28,6 +28,9 @@ class FilmRankingApp {
         // Export button
         document.getElementById('exportBtn').addEventListener('click', () => this.exportRankings());
         
+        // Export as Image button
+        document.getElementById('exportImageBtn').addEventListener('click', () => this.exportAsImage());
+        
         // Import button and file input
         document.getElementById('importBtn').addEventListener('click', () => this.showImportDialog());
         document.getElementById('importFile').addEventListener('change', (e) => this.importRankings(e));
@@ -1532,6 +1535,233 @@ class FilmRankingApp {
         URL.revokeObjectURL(url);
         
         this.showSuccessMessage('Rankings exported successfully!');
+    }
+
+    exportAsImage() {
+        if (this.films.length === 0) {
+            alert('No films to export. Please add some films first.');
+            return;
+        }
+
+        const topN = prompt(`How many top films would you like to export as an image? (1-${this.films.length})`, Math.min(10, this.films.length));
+        
+        if (topN === null) return; // User cancelled
+        
+        const n = parseInt(topN);
+        if (isNaN(n) || n < 1 || n > this.films.length) {
+            alert(`Please enter a valid number between 1 and ${this.films.length}.`);
+            return;
+        }
+
+        this.generateTopNImage(n);
+    }
+
+    async generateTopNImage(n) {
+        // Recalculate ELO to ensure we have the latest rankings
+        this.recalculateEloRatings();
+        
+        // Sort films by ELO rating (descending) to get top N
+        const sortedFilms = [...this.films].sort((a, b) => (b.eloRating || 1200) - (a.eloRating || 1200));
+        const topFilms = sortedFilms.slice(0, n);
+
+        // Create a temporary container for rendering
+        const tempContainer = document.createElement('div');
+        tempContainer.style.cssText = `
+            position: absolute;
+            top: -10000px;
+            left: -10000px;
+            width: 400px;
+            background: #f8f9fa;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        `;
+
+        // Add title
+        const title = document.createElement('div');
+        title.style.cssText = `
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #212529;
+        `;
+        title.textContent = `Top ${n} OoO Rankings`;
+        tempContainer.appendChild(title);
+
+        // Generate cards for each film
+        for (let i = 0; i < topFilms.length; i++) {
+            const film = topFilms[i];
+            const rank = i + 1;
+            
+            const card = await this.createImageDetailCard(film, rank);
+            tempContainer.appendChild(card);
+            
+            // Add spacing between cards except for the last one
+            if (i < topFilms.length - 1) {
+                const spacer = document.createElement('div');
+                spacer.style.height = '20px';
+                tempContainer.appendChild(spacer);
+            }
+        }
+
+        document.body.appendChild(tempContainer);
+
+        try {
+            // Use html2canvas to convert to image
+            const canvas = await html2canvas(tempContainer, {
+                backgroundColor: '#f8f9fa',
+                scale: 2, // Higher resolution
+                useCORS: true,
+                allowTaint: true
+            });
+
+            // Create download link
+            canvas.toBlob((blob) => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `top-${n}-ooo-rankings-${new Date().toISOString().split('T')[0]}.png`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                this.showSuccessMessage(`Top ${n} rankings exported as image!`);
+            });
+        } catch (error) {
+            console.error('Export error:', error);
+            alert('Error generating image. Please try again or try with fewer films.');
+        } finally {
+            // Clean up
+            document.body.removeChild(tempContainer);
+        }
+    }
+
+    async createImageDetailCard(film, rank) {
+        const eloRating = Math.round(film.eloRating || 1200);
+        const eloClass = this.getEloRatingClass(eloRating);
+        const winLossRecord = this.getWinLossRecord(film);
+        
+        const card = document.createElement('div');
+        card.style.cssText = `
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            overflow: hidden;
+            border: 1px solid #dee2e6;
+        `;
+
+        // Card header
+        const header = document.createElement('div');
+        header.style.cssText = `
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        `;
+
+        const rankElement = document.createElement('div');
+        rankElement.style.cssText = `
+            font-size: 24px;
+            font-weight: bold;
+            background: rgba(255,255,255,0.2);
+            padding: 8px 12px;
+            border-radius: 8px;
+        `;
+        rankElement.textContent = `#${rank}`;
+
+        const titleElement = document.createElement('div');
+        titleElement.style.cssText = `
+            font-size: 18px;
+            font-weight: 600;
+            flex: 1;
+            margin-left: 15px;
+            text-align: center;
+        `;
+        titleElement.textContent = film.title;
+
+        header.appendChild(rankElement);
+        header.appendChild(titleElement);
+        card.appendChild(header);
+
+        // Thumbnail
+        if (film.thumbnailUrl) {
+            const thumbnailContainer = document.createElement('div');
+            thumbnailContainer.style.cssText = `
+                height: 200px;
+                background-image: url(${film.thumbnailUrl});
+                background-size: cover;
+                background-position: center;
+                background-color: #f8f9fa;
+            `;
+            card.appendChild(thumbnailContainer);
+        }
+
+        // Stats section
+        const statsContainer = document.createElement('div');
+        statsContainer.style.cssText = `
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        `;
+
+        const stats = [
+            { label: 'Total Wins', value: film.wins || 0 },
+            { label: 'Win Rate', value: `${this.calculateWinRate(film)}%` },
+            { label: 'Record', value: winLossRecord },
+            { label: 'ELO Rating', value: eloRating, class: eloClass }
+        ];
+
+        stats.forEach(stat => {
+            const statElement = document.createElement('div');
+            statElement.style.cssText = `
+                text-align: center;
+                padding: 12px;
+                background: #f8f9fa;
+                border-radius: 8px;
+                border: 1px solid #dee2e6;
+            `;
+
+            const label = document.createElement('div');
+            label.style.cssText = `
+                font-size: 12px;
+                color: #6c757d;
+                margin-bottom: 4px;
+                font-weight: 500;
+            `;
+            label.textContent = stat.label;
+
+            const value = document.createElement('div');
+            value.style.cssText = `
+                font-size: 16px;
+                font-weight: bold;
+                color: #212529;
+            `;
+            
+            // Apply ELO color if applicable
+            if (stat.class) {
+                const eloColors = {
+                    'elo-master': '#dc3545',     // Red/Gold
+                    'elo-expert': '#ffc107',     // Yellow
+                    'elo-intermediate': '#28a745', // Green
+                    'elo-beginner': '#6c757d'    // Gray
+                };
+                value.style.color = eloColors[stat.class] || '#212529';
+            }
+            
+            value.textContent = stat.value;
+
+            statElement.appendChild(label);
+            statElement.appendChild(value);
+            statsContainer.appendChild(statElement);
+        });
+
+        card.appendChild(statsContainer);
+        
+        return card;
     }
 
     showImportDialog() {

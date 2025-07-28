@@ -7,6 +7,7 @@
     <link rel="icon" type="image/x-icon" href="blueOoo.ico">
     <link rel="apple-touch-icon" href="blueOoo.png">
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -15,7 +16,7 @@
                 <header>
                     <img src="blueOoo.png" alt="OoO Logo" style="height:48px;width:auto;margin-bottom:10px;filter:drop-shadow(0 2px 6px #007bff99);">
                     <h1>OoO Tierlist</h1>
-                    <div class="subtitle">One on One Rankings for Youtube Films</div>
+                    <div class="subtitle">One on One Rankings for Youtube videos</div>
                 </header>
                 <div class="view-section">
                     <h3>View Mode</h3>
@@ -46,6 +47,7 @@
                 <div class="controls">
                     <button id="addFilmBtn" class="btn btn-primary">Add New Item</button>
                     <button id="exportBtn" class="btn btn-secondary">Export Rankings</button>
+                    <button id="exportImageBtn" class="btn btn-secondary">Export as Image</button>
                     <button id="importBtn" class="btn btn-secondary">Import Rankings</button>
                     <input type="file" id="importFile" accept=".json" style="display: none;">
                 </div>
