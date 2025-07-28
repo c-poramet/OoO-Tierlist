@@ -8,6 +8,7 @@
     <link rel="apple-touch-icon" href="blueOoo.png">
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.3/qrcode.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -129,6 +130,40 @@
                         </button>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Settings Modal -->
+    <div id="exportSettingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Export Image Settings</h2>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="topNInput">Number of top films to export:</label>
+                    <input type="number" id="topNInput" min="1" placeholder="Enter number of films">
+                    <div class="input-hint">Enter a number between 1 and <span id="maxFilmsHint">0</span></div>
+                </div>
+                <div class="form-group">
+                    <label for="gridColumnsInput">Grid columns:</label>
+                    <input type="number" id="gridColumnsInput" min="1" max="6" value="2" placeholder="Number of columns">
+                    <div class="input-hint">Choose between 1-6 columns for the grid layout</div>
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="includeQRCodes">
+                        <span class="checkmark"></span>
+                        Include QR codes for film links at the end
+                    </label>
+                    <div class="input-hint">Adds a page with QR codes linking to each film's media</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelExportBtn" class="btn btn-secondary">Cancel</button>
+                <button id="confirmExportBtn" class="btn btn-primary">Export Image</button>
             </div>
         </div>
     </div>
