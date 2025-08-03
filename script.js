@@ -946,8 +946,9 @@ class FilmRankingApp {
             return;
         }
 
-        // Sort films by rank for consistent navigation
         // Sort films by ELO rating (descending) for detail view
+        // IMPORTANT: This sorting MUST match the sorting used in jumpToFilmDetail() and navigateToLast()
+        // to ensure consistent navigation between view modes
         const sortedFilms = [...this.films].sort((a, b) => (b.eloRating || b.elo || 1200) - (a.eloRating || a.elo || 1200));
 
         // Ensure currentDetailIndex is within bounds
@@ -1175,13 +1176,9 @@ class FilmRankingApp {
     }
 
     navigateToLast() {
-        // Sort films by rank for consistent navigation (same as in showDetailView)
-        const sortedFilms = [...this.films].sort((a, b) => {
-            if (a.overallRank !== b.overallRank) {
-                return a.overallRank - b.overallRank;
-            }
-            return (b.wins || 0) - (a.wins || 0);
-        });
+        // Use the same sorting as showDetailView to ensure consistency
+        // Sort films by ELO rating (descending) for detail view
+        const sortedFilms = [...this.films].sort((a, b) => (b.eloRating || b.elo || 1200) - (a.eloRating || a.elo || 1200));
         
         this.currentDetailIndex = sortedFilms.length - 1;
         this.updateDisplay();
@@ -1206,13 +1203,9 @@ class FilmRankingApp {
     }
 
     jumpToFilmDetail(filmId) {
-        // Sort films by rank for consistent navigation (same as in showDetailView)
-        const sortedFilms = [...this.films].sort((a, b) => {
-            if (a.overallRank !== b.overallRank) {
-                return a.overallRank - b.overallRank;
-            }
-            return (b.wins || 0) - (a.wins || 0);
-        });
+        // Use the same sorting as showDetailView to ensure consistency
+        // Sort films by ELO rating (descending) for detail view
+        const sortedFilms = [...this.films].sort((a, b) => (b.eloRating || b.elo || 1200) - (a.eloRating || a.elo || 1200));
         
         // Find the index of the film in sorted order
         const filmIndex = sortedFilms.findIndex(film => film.id === filmId);
