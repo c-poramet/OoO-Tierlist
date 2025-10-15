@@ -51,6 +51,9 @@ class FilmRankingApp {
         // Export as Image button
         document.getElementById('exportImageBtn').addEventListener('click', () => this.showExportSettingsModal());
         
+        // Export Links button
+        document.getElementById('exportLinksBtn').addEventListener('click', () => this.exportLinks());
+        
         // Export settings modal events
         document.getElementById('cancelExportBtn').addEventListener('click', () => this.hideExportSettingsModal());
         document.getElementById('confirmExportBtn').addEventListener('click', () => this.handleExportConfirm());
@@ -1563,6 +1566,40 @@ class FilmRankingApp {
         URL.revokeObjectURL(url);
         
         this.showSuccessMessage('Rankings exported successfully!');
+    }
+
+    exportLinks() {
+        if (this.films.length === 0) {
+            alert('No films to export. Please add some films first.');
+            return;
+        }
+
+        // Sort films by rank (lower rank number = higher position)
+        const sortedFilms = [...this.films].sort((a, b) => a.overallRank - b.overallRank);
+        
+        // Create text content with each film's link on a separate line
+        const linksText = sortedFilms
+            .filter(film => film.videoLink) // Only include films that have links
+            .map(film => film.videoLink)
+            .join('\n');
+        
+        if (linksText.trim() === '') {
+            alert('No films with video links found to export.');
+            return;
+        }
+        
+        // Create and download the .txt file
+        const blob = new Blob([linksText], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `film-links-${new Date().toISOString().split('T')[0]}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        this.showSuccessMessage('Film links exported successfully!');
     }
 
     showExportSettingsModal() {
