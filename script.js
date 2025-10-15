@@ -35,12 +35,18 @@ class FilmRankingApp {
 
     setupEventListeners() {
         // Add item button
-        document.getElementById('addFilmBtn').addEventListener('click', () => this.showAddFilmModal());
+        document.getElementById('addFilmBtn').addEventListener('click', () => {
+            console.log('Add Film button clicked');
+            this.showAddFilmModal();
+        });
         
         // Modal controls
         document.querySelector('.close').addEventListener('click', () => this.hideAddFilmModal());
         document.getElementById('cancelBtn').addEventListener('click', () => this.hideAddFilmModal());
-        document.getElementById('confirmAddBtn').addEventListener('click', () => this.addFilm());
+        document.getElementById('confirmAddBtn').addEventListener('click', () => {
+            console.log('Confirm Add button clicked');
+            this.addFilm();
+        });
         
         // Auto-fill button
         document.getElementById('autoFillBtn').addEventListener('click', () => this.autoFillTitle());
@@ -116,6 +122,7 @@ class FilmRankingApp {
     }
 
     showAddFilmModal() {
+        console.log('showAddFilmModal called');
         document.getElementById('addFilmModal').style.display = 'block';
         document.getElementById('filmTitle').focus();
     }
@@ -356,9 +363,12 @@ class FilmRankingApp {
     }
 
     async addFilm() {
+        console.log('addFilm method called');
         const title = document.getElementById('filmTitle').value.trim();
         const link = document.getElementById('videoLink').value.trim();
         const customImage = document.getElementById('customImage').value.trim();
+        
+        console.log('Form values:', { title, link, customImage });
 
         if (!title && !link) {
             alert('Please enter either a title or a media link');
@@ -434,11 +444,13 @@ class FilmRankingApp {
     }
 
     async startComparisons(newFilm) {
+        console.log('startComparisons called for:', newFilm.title);
         this.comparisonQueue = [];
         this.comparisonHistory = []; // Reset comparison history for new film
 
         // Sort existing films by ELO descending (highest first)
         const sortedFilms = [...this.films].sort((a, b) => (b.eloRating || 1200) - (a.eloRating || 1200));
+        console.log('Existing films to compare against:', sortedFilms.length);
 
         // Add overall comparisons against each existing film in sorted order
         for (const existingFilm of sortedFilms) {
@@ -448,6 +460,7 @@ class FilmRankingApp {
             });
         }
 
+        console.log('Comparison queue length:', this.comparisonQueue.length);
         // Start the comparison process
         this.processNextComparison();
     }
