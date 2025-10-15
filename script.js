@@ -467,9 +467,11 @@ class FilmRankingApp {
         }
 
         const lastState = this.comparisonHistory.pop();
-        const { comparison, newFilmState, existingFilmState } = lastState;
+        const { comparison, newFilmState, existingFilmState, queueSnapshot } = lastState;
         
         console.log('Undoing comparison:', comparison.newFilm.title, 'vs', comparison.existingFilm.title);
+        console.log('Current queue before undo:', this.comparisonQueue.map(c => `${c.newFilm.title} vs ${c.existingFilm.title}`));
+        console.log('Restoring queue to:', queueSnapshot.map(c => `${c.newFilm.title} vs ${c.existingFilm.title}`));
         
         // Restore the film states
         comparison.newFilm.comparisons = newFilmState.comparisons;
@@ -477,9 +479,9 @@ class FilmRankingApp {
         comparison.existingFilm.comparisons = existingFilmState.comparisons;
         comparison.existingFilm.wins = existingFilmState.wins;
         
-        // Put the comparison back at the front of the queue
-        this.comparisonQueue.unshift(comparison);
-        console.log('Restored to queue, new queue length:', this.comparisonQueue.length);
+        // Restore the entire queue state and put the undone comparison back at front
+        this.comparisonQueue = [comparison, ...queueSnapshot];
+        console.log('Restored queue, new queue length:', this.comparisonQueue.length);
         
         // Process the restored comparison (this will set currentComparison properly)
         this.processNextComparison();
@@ -546,8 +548,11 @@ class FilmRankingApp {
                 comparisons: { ...existingFilm.comparisons },
                 wins: existingFilm.wins
             },
-            choice: isBetter
+            choice: isBetter,
+            // Save the current queue state so we can restore it properly
+            queueSnapshot: [...this.comparisonQueue]
         };
+        console.log('Saving undo state for:', comparison.newFilm.title, 'vs', comparison.existingFilm.title, 'Queue has', this.comparisonQueue.length, 'items');
         this.comparisonHistory.push(undoState);
         
         // Initialize comparisons object if it doesn't exist
