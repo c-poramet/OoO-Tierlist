@@ -466,8 +466,10 @@ class FilmRankingApp {
     }
 
     processNextComparison() {
+        console.log('processNextComparison called, queue length:', this.comparisonQueue.length);
         if (this.comparisonQueue.length === 0) {
             // All comparisons done
+            console.log('All comparisons done, calling finishComparisons');
             this.finishComparisons();
             return;
         }
@@ -597,13 +599,20 @@ class FilmRankingApp {
     }
 
     finishComparisons() {
+        console.log('finishComparisons called');
         const newFilm = this.currentComparison?.newFilm;
-        if (!newFilm) return;
+        if (!newFilm) {
+            console.log('No newFilm found in currentComparison');
+            return;
+        }
 
+        console.log('Finishing comparisons for:', newFilm.title, 'Wins:', newFilm.wins);
         // Calculate rank based on wins - more wins = higher rank (lower rank number)
         newFilm.overallRank = this.films.length - newFilm.wins;
+        console.log('Calculated rank:', newFilm.overallRank);
 
         this.films.push(newFilm);
+        console.log('Films array length after push:', this.films.length);
         this.recalculateAllRanks();
         this.saveData();
         this.updateDisplay();
@@ -755,6 +764,7 @@ class FilmRankingApp {
     }
 
     updateDisplay() {
+        console.log('updateDisplay called, films count:', this.films.length, 'currentView:', this.currentView);
         switch (this.currentView) {
             case 'tree':
                 this.showTreeView();
