@@ -1579,8 +1579,8 @@ class FilmRankingApp {
         
         // Create text content with each film's link on a separate line
         const linksText = sortedFilms
-            .filter(film => film.videoLink) // Only include films that have links
-            .map(film => film.videoLink)
+            .filter(film => film.videoLink || film.link) // Only include films that have links
+            .map(film => film.videoLink || film.link) // Get the link from either property
             .join('\n');
         
         if (linksText.trim() === '') {
