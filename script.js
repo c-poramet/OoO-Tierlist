@@ -457,6 +457,7 @@ class FilmRankingApp {
         }
 
         this.currentComparison = this.comparisonQueue.shift();
+        console.log('Processing comparison:', this.currentComparison.newFilm.title, 'vs', this.currentComparison.existingFilm.title, 'Queue length:', this.comparisonQueue.length);
         this.showComparisonModal(this.currentComparison);
     }
 
@@ -468,6 +469,8 @@ class FilmRankingApp {
         const lastState = this.comparisonHistory.pop();
         const { comparison, newFilmState, existingFilmState } = lastState;
         
+        console.log('Undoing comparison:', comparison.newFilm.title, 'vs', comparison.existingFilm.title);
+        
         // Restore the film states
         comparison.newFilm.comparisons = newFilmState.comparisons;
         comparison.newFilm.wins = newFilmState.wins;
@@ -476,12 +479,10 @@ class FilmRankingApp {
         
         // Put the comparison back at the front of the queue
         this.comparisonQueue.unshift(comparison);
+        console.log('Restored to queue, new queue length:', this.comparisonQueue.length);
         
-        // Update the current comparison
-        this.currentComparison = comparison;
-        
-        // Update the modal display
-        this.showComparisonModal(this.currentComparison);
+        // Process the restored comparison (this will set currentComparison properly)
+        this.processNextComparison();
         
         // Show feedback to user
         this.showUndoMessage('Last comparison undone');
@@ -565,6 +566,11 @@ class FilmRankingApp {
             existingFilm.wins++;
         }
 
+        console.log('Comparison completed:', newFilm.title, isBetter ? 'wins' : 'loses', 'against', existingFilm.title);
+        
+        // Clear current comparison as it's now completed
+        this.currentComparison = null;
+        
         document.getElementById('comparisonModal').style.display = 'none';
         this.processNextComparison();
     }
