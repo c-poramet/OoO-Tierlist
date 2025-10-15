@@ -591,9 +591,6 @@ class FilmRankingApp {
 
         console.log('Comparison completed:', newFilm.title, isBetter ? 'wins' : 'loses', 'against', existingFilm.title);
         
-        // Clear current comparison as it's now completed
-        this.currentComparison = null;
-        
         document.getElementById('comparisonModal').style.display = 'none';
         this.processNextComparison();
     }
@@ -613,6 +610,10 @@ class FilmRankingApp {
 
         this.films.push(newFilm);
         console.log('Films array length after push:', this.films.length);
+        
+        // Clear current comparison now that we're done with it
+        this.currentComparison = null;
+        
         this.recalculateAllRanks();
         this.saveData();
         this.updateDisplay();
