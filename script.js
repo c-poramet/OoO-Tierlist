@@ -546,6 +546,9 @@ class FilmRankingApp {
             this.updateDisplay();
             this.showSuccessMessage(`Added "${filmData.title}" to your rankings!`);
         }
+        
+        // Trigger comparisons in sub-profiles that share films with this profile
+        this.triggerSubProfileComparisons(filmData);
     }
 
     async startComparisons(newFilm) {
@@ -568,6 +571,48 @@ class FilmRankingApp {
         console.log('Comparison queue length:', this.comparisonQueue.length);
         // Start the comparison process
         this.processNextComparison();
+    }
+
+    triggerSubProfileComparisons(newFilm) {
+        // Find all sub-profiles that share films with the current profile
+        const subProfiles = Object.values(this.profiles).filter(profile => 
+            profile.parentProfile === this.currentProfile
+        );
+        
+        if (subProfiles.length === 0) {
+            return; // No sub-profiles to notify
+        }
+        
+        console.log(`Adding film to ${subProfiles.length} sub-profiles: ${newFilm.title}`);
+        
+        // Add the new film to all sub-profiles immediately
+        subProfiles.forEach(subProfile => {
+            // Ensure the sub-profile has films array
+            if (!this.profiles[subProfile.id].films) {
+                this.profiles[subProfile.id].films = [];
+            }
+            
+            // Check if film already exists in this sub-profile
+            const existingIndex = this.profiles[subProfile.id].films.findIndex(f => f.id === newFilm.id);
+            if (existingIndex === -1) {
+                // Add film with fresh comparison data for this sub-profile
+                const subProfileFilm = {
+                    ...newFilm,
+                    comparisons: {}, // Fresh comparisons for this sub-profile
+                    wins: 0, // Reset wins for this sub-profile
+                    eloRating: 1200 // Reset ELO for this sub-profile
+                };
+                this.profiles[subProfile.id].films.push(subProfileFilm);
+            }
+        });
+        
+        // Save the updated profiles
+        this.saveProfiles();
+        
+        // Store sub-profile IDs for multi-profile comparisons
+        this.activeSubProfiles = subProfiles.map(p => p.id);
+        
+        console.log(`Film added to all sub-profiles. Active sub-profiles for comparisons:`, this.activeSubProfiles);
     }
 
     processNextComparison() {
@@ -678,26 +723,51 @@ class FilmRankingApp {
         console.log('Saving undo state for:', comparison.newFilm.title, 'vs', comparison.existingFilm.title, 'Queue has', this.comparisonQueue.length, 'items');
         this.comparisonHistory.push(undoState);
         
-        // Initialize comparisons object if it doesn't exist
-        if (!newFilm.comparisons) newFilm.comparisons = {};
-        if (!existingFilm.comparisons) existingFilm.comparisons = {};
+        // Update comparison in current profile
+        this.updateComparisonInProfile(newFilm, existingFilm, isBetter, this.currentProfile);
         
-        if (isBetter) {
-            // New film wins
-            newFilm.comparisons[existingFilm.id] = 'win';
-            existingFilm.comparisons[newFilm.id] = 'loss';
-            newFilm.wins++;
-        } else {
-            // Existing film wins
-            newFilm.comparisons[existingFilm.id] = 'loss';
-            existingFilm.comparisons[newFilm.id] = 'win';
-            existingFilm.wins++;
+        // Update comparison in all active sub-profiles
+        if (this.activeSubProfiles && this.activeSubProfiles.length > 0) {
+            this.activeSubProfiles.forEach(profileId => {
+                this.updateComparisonInProfile(newFilm, existingFilm, isBetter, profileId);
+            });
+            console.log(`Updated comparison in ${this.activeSubProfiles.length + 1} profiles total`);
         }
 
         console.log('Comparison completed:', newFilm.title, isBetter ? 'wins' : 'loses', 'against', existingFilm.title);
         
         document.getElementById('comparisonModal').style.display = 'none';
         this.processNextComparison();
+    }
+    
+    updateComparisonInProfile(newFilm, existingFilm, isBetter, profileId) {
+        // Get the profile's films
+        const profileFilms = profileId === this.currentProfile ? this.films : this.profiles[profileId].films;
+        
+        // Find the films in this profile
+        const profileNewFilm = profileFilms.find(f => f.id === newFilm.id);
+        const profileExistingFilm = profileFilms.find(f => f.id === existingFilm.id);
+        
+        if (!profileNewFilm || !profileExistingFilm) {
+            console.warn(`Films not found in profile ${profileId}`);
+            return;
+        }
+        
+        // Initialize comparisons object if it doesn't exist
+        if (!profileNewFilm.comparisons) profileNewFilm.comparisons = {};
+        if (!profileExistingFilm.comparisons) profileExistingFilm.comparisons = {};
+        
+        if (isBetter) {
+            // New film wins
+            profileNewFilm.comparisons[profileExistingFilm.id] = 'win';
+            profileExistingFilm.comparisons[profileNewFilm.id] = 'loss';
+            profileNewFilm.wins = (profileNewFilm.wins || 0) + 1;
+        } else {
+            // Existing film wins
+            profileNewFilm.comparisons[profileExistingFilm.id] = 'loss';
+            profileExistingFilm.comparisons[profileNewFilm.id] = 'win';
+            profileExistingFilm.wins = (profileExistingFilm.wins || 0) + 1;
+        }
     }
 
     finishComparisons() {
@@ -731,9 +801,138 @@ class FilmRankingApp {
         // Clear current comparison now that we're done with it
         this.currentComparison = null;
         
+        // Update current profile
         this.recalculateAllRanks();
         this.saveData();
+        
+        // Update ELO and rankings in all active sub-profiles
+        if (this.activeSubProfiles && this.activeSubProfiles.length > 0) {
+            this.activeSubProfiles.forEach(profileId => {
+                this.recalculateRanksForProfile(profileId);
+            });
+            
+            // Save all profiles
+            this.saveProfiles();
+            
+            console.log(`Updated rankings in ${this.activeSubProfiles.length + 1} profiles`);
+            
+            // Clear active sub-profiles
+            this.activeSubProfiles = [];
+        }
+        
         this.updateDisplay();
+    }
+    
+    recalculateRanksForProfile(profileId) {
+        const profile = this.profiles[profileId];
+        if (!profile || !profile.films) return;
+        
+        // Ensure all films have comparisons object and correct win counts
+        profile.films.forEach(film => {
+            if (!film.comparisons) film.comparisons = {};
+            
+            // Recalculate wins based on comparisons
+            film.wins = 0;
+            Object.values(film.comparisons).forEach(result => {
+                if (result === 'win') film.wins++;
+            });
+        });
+
+        // Recalculate ranks based on wins
+        const sortedFilms = [...profile.films].sort((a, b) => (b.wins || 0) - (a.wins || 0));
+        sortedFilms.forEach((film, index) => {
+            film.overallRank = index;
+        });
+
+        // Recalculate ELO ratings
+        this.recalculateEloForProfile(profileId);
+        
+        console.log(`Recalculated ranks for profile ${profileId}`);
+    }
+    
+    recalculateEloForProfile(profileId) {
+        const profile = this.profiles[profileId];
+        if (!profile || !profile.films) return;
+        
+        const films = profile.films;
+        
+        // Reset all ratings to starting value
+        films.forEach(film => {
+            if (film.eloRating === undefined) film.eloRating = 1200;
+            film.eloRating = 1200; // Reset for recalculation
+        });
+
+        // Collect all comparisons - ensure we have all unique matchups
+        const allComparisons = [];
+        const processedPairs = new Set();
+        
+        films.forEach(filmA => {
+            if (!filmA.comparisons) return;
+            
+            Object.keys(filmA.comparisons).forEach(filmBId => {
+                const filmB = films.find(f => f.id == filmBId);
+                if (!filmB) return;
+                
+                // Create a unique pair identifier (always use smaller ID first)
+                const pairId = `${Math.min(filmA.id, filmB.id)}-${Math.max(filmA.id, filmB.id)}`;
+                
+                if (!processedPairs.has(pairId)) {
+                    processedPairs.add(pairId);
+                    
+                    const result = filmA.comparisons[filmBId];
+                    if (result === 'win') {
+                        allComparisons.push({
+                            winner: filmA,
+                            loser: filmB
+                        });
+                    } else if (result === 'loss') {
+                        allComparisons.push({
+                            winner: filmB,
+                            loser: filmA
+                        });
+                    }
+                }
+            });
+        });
+
+        // Iterate multiple times until ratings converge
+        const maxIterations = 100;
+        const convergenceThreshold = 0.01;
+        
+        for (let iteration = 0; iteration < maxIterations; iteration++) {
+            let totalChange = 0;
+            
+            // Process comparisons in CONSISTENT order
+            const sortedComparisons = [...allComparisons].sort((a, b) => {
+                const aKey = a.winner.id * 1000000 + a.loser.id;
+                const bKey = b.winner.id * 1000000 + b.loser.id;
+                return aKey - bKey;
+            });
+            
+            sortedComparisons.forEach(comparison => {
+                const { winner, loser } = comparison;
+                const ratingWinner = winner.eloRating;
+                const ratingLoser = loser.eloRating;
+                
+                const kFactor = 8;
+                
+                const newRatingWinner = this.calculateEloRating(ratingWinner, ratingLoser, 1, kFactor);
+                const newRatingLoser = this.calculateEloRating(ratingLoser, ratingWinner, 0, kFactor);
+                
+                totalChange += Math.abs(newRatingWinner - ratingWinner);
+                totalChange += Math.abs(newRatingLoser - ratingLoser);
+                
+                winner.eloRating = newRatingWinner;
+                loser.eloRating = newRatingLoser;
+            });
+            
+            // Check for convergence
+            if (totalChange < convergenceThreshold) {
+                break;
+            }
+        }
+        
+        console.log(`ELO ratings recalculated for profile ${profileId}`);
     }
 
     deleteFilm(filmId) {
