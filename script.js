@@ -12,6 +12,7 @@ class FilmRankingApp {
         
         this.loadProfiles();
         this.setupEventListeners();
+        this.applyProfileColor();
         this.updateDisplay();
         
         // Check QR code library availability
@@ -180,6 +181,22 @@ class FilmRankingApp {
         const shareFilmsCheckbox = document.getElementById('shareFilmsCheckbox');
         if (shareFilmsCheckbox) {
             shareFilmsCheckbox.addEventListener('change', () => this.toggleShareFilms());
+        }
+        
+        // Edit profile modal event listeners
+        const editProfileModalClose = document.querySelectorAll('#editProfileModal .close');
+        editProfileModalClose.forEach(btn => {
+            btn.addEventListener('click', () => this.hideEditProfileModal());
+        });
+        
+        const cancelEditProfileBtn = document.getElementById('cancelEditProfileBtn');
+        if (cancelEditProfileBtn) {
+            cancelEditProfileBtn.addEventListener('click', () => this.hideEditProfileModal());
+        }
+        
+        const saveEditProfileBtn = document.getElementById('saveEditProfileBtn');
+        if (saveEditProfileBtn) {
+            saveEditProfileBtn.addEventListener('click', () => this.saveProfileEdit());
         }
     }
 
@@ -506,8 +523,7 @@ class FilmRankingApp {
 
         if (this.films.length > 0) {
             await this.startComparisons(filmData);
-            // Handle cross-profile comparisons
-            this.handleCrossProfileComparisons(filmData);
+            // Note: Cross-profile comparisons are handled separately to avoid conflicts
         } else {
             // First item, no comparisons needed
             this.films.push(filmData);
@@ -2741,6 +2757,7 @@ class FilmRankingApp {
             name: 'My Rankings',
             films: [],
             parentProfile: null,
+            color: '#007bff', // Default blue color
             createdAt: Date.now()
         };
         
@@ -2803,6 +2820,7 @@ class FilmRankingApp {
         
         // Update UI
         this.updateProfileSelector();
+        this.applyProfileColor();
         this.updateDisplay();
     }
     
@@ -2942,6 +2960,7 @@ class FilmRankingApp {
     
     resetProfileForm() {
         document.getElementById('profileName').value = '';
+        document.getElementById('profileColor').value = '#007bff';
         document.getElementById('shareFilmsCheckbox').checked = false;
         document.getElementById('parentProfileSelect').value = '';
         document.getElementById('parentProfileContainer').style.display = 'none';
@@ -2963,17 +2982,21 @@ class FilmRankingApp {
             
             profileItem.innerHTML = `
                 <div class="profile-info">
-                    <div class="profile-name">${profile.name}</div>
+                    <div class="profile-name">
+                        <span class="profile-color-indicator" style="background-color: ${profile.color || '#007bff'}"></span>
+                        ${profile.name}
+                    </div>
                     <div class="profile-details">
                         ${this.films.length} films ${parentInfo}
                     </div>
                 </div>
                 <div class="profile-actions">
-                    <button class="btn btn-small btn-primary" onclick="app.switchToProfile('${profile.id}')">
+                    <button class="btn btn-small btn-primary profile-action-btn" onclick="app.switchToProfile('${profile.id}')">
                         ${profile.id === this.currentProfile ? 'Current' : 'Switch'}
                     </button>
+                    <button class="btn btn-small btn-secondary profile-action-btn" onclick="app.editProfile('${profile.id}')">Edit</button>
                     ${profile.id !== 'default' ? `
-                        <button class="btn btn-small btn-danger" onclick="app.deleteProfile('${profile.id}')">Delete</button>
+                        <button class="btn btn-small btn-danger profile-action-btn" onclick="app.deleteProfile('${profile.id}')">Delete</button>
                     ` : ''}
                 </div>
             `;
@@ -3008,6 +3031,7 @@ class FilmRankingApp {
         const name = document.getElementById('profileName').value.trim();
         const shareFilms = document.getElementById('shareFilmsCheckbox').checked;
         const parentProfileId = document.getElementById('parentProfileSelect').value;
+        const color = document.getElementById('profileColor').value || '#007bff';
         
         if (!name) {
             alert('Please enter a profile name');
@@ -3020,6 +3044,7 @@ class FilmRankingApp {
             name: name,
             films: [],
             parentProfile: shareFilms ? parentProfileId : null,
+            color: color,
             createdAt: Date.now()
         };
         
@@ -3032,6 +3057,109 @@ class FilmRankingApp {
         this.hideProfileModal();
         this.switchToProfile(profileId);
         this.showSuccessMessage(`Profile "${name}" created successfully!`);
+    }
+    
+    editProfile(profileId) {
+        const profile = this.profiles[profileId];
+        if (!profile) return;
+        
+        // Pre-fill the edit form
+        document.getElementById('editProfileName').value = profile.name;
+        document.getElementById('editProfileColor').value = profile.color || '#007bff';
+        
+        // Store the profile being edited
+        this.editingProfileId = profileId;
+        
+        // Show edit modal
+        document.getElementById('editProfileModal').style.display = 'block';
+    }
+    
+    saveProfileEdit() {
+        const profileId = this.editingProfileId;
+        const newName = document.getElementById('editProfileName').value.trim();
+        const newColor = document.getElementById('editProfileColor').value;
+        
+        if (!newName) {
+            alert('Please enter a profile name');
+            return;
+        }
+        
+        if (this.profiles[profileId]) {
+            this.profiles[profileId].name = newName;
+            this.profiles[profileId].color = newColor;
+            
+            this.saveProfiles();
+            this.updateProfileList();
+            this.updateProfileSelector();
+            this.applyProfileColor();
+            
+            this.hideEditProfileModal();
+            this.showSuccessMessage(`Profile "${newName}" updated successfully!`);
+        }
+    }
+    
+    hideEditProfileModal() {
+        document.getElementById('editProfileModal').style.display = 'none';
+        this.editingProfileId = null;
+    }
+    
+    applyProfileColor() {
+        if (!this.currentProfile || !this.profiles[this.currentProfile]) return;
+        
+        const profile = this.profiles[this.currentProfile];
+        const color = profile.color || '#007bff';
+        
+        // Apply color to sidebar header
+        const sidebarHeader = document.querySelector('.sidebar header');
+        if (sidebarHeader) {
+            sidebarHeader.style.background = `linear-gradient(135deg, ${color} 0%, ${this.darkenColor(color, 20)} 100%)`;
+        }
+        
+        // Apply color to view section headers
+        const viewSectionAfter = document.querySelector('.view-section h3');
+        if (viewSectionAfter) {
+            // Create or update dynamic style
+            let styleElement = document.getElementById('profile-color-style');
+            if (!styleElement) {
+                styleElement = document.createElement('style');
+                styleElement.id = 'profile-color-style';
+                document.head.appendChild(styleElement);
+            }
+            
+            styleElement.textContent = `
+                .view-section h3::after,
+                .profile-section h3::after {
+                    background: ${color} !important;
+                }
+                .btn-view.active-view {
+                    background: linear-gradient(135deg, ${color} 0%, ${this.darkenColor(color, 20)} 100%) !important;
+                    border-color: ${this.darkenColor(color, 30)} !important;
+                }
+                .btn-view:hover {
+                    border-color: ${color} !important;
+                    color: ${color} !important;
+                }
+            `;
+        }
+    }
+    
+    darkenColor(hex, percent) {
+        // Remove # if present
+        hex = hex.replace('#', '');
+        
+        // Parse RGB values
+        const r = parseInt(hex.substr(0, 2), 16);
+        const g = parseInt(hex.substr(2, 2), 16);
+        const b = parseInt(hex.substr(4, 2), 16);
+        
+        // Darken by percentage
+        const factor = (100 - percent) / 100;
+        const newR = Math.round(r * factor);
+        const newG = Math.round(g * factor);
+        const newB = Math.round(b * factor);
+        
+        // Convert back to hex
+        return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`;
     }
     
     deleteProfile(profileId) {

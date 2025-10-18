@@ -205,6 +205,11 @@
                             <input type="text" id="profileName" placeholder="Enter profile name">
                         </div>
                         <div class="form-group">
+                            <label for="profileColor">Profile Color:</label>
+                            <input type="color" id="profileColor" value="#007bff">
+                            <div class="input-hint">Choose a color to theme the sidebar for this profile</div>
+                        </div>
+                        <div class="form-group">
                             <label class="checkbox-label">
                                 <input type="checkbox" id="shareFilmsCheckbox">
                                 <span class="checkmark"></span>
@@ -233,6 +238,31 @@
             </div>
             <div class="modal-footer">
                 <button id="cancelProfileBtn" class="btn btn-secondary">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Profile Modal -->
+    <div id="editProfileModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Edit Profile</h2>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="editProfileName">Profile Name:</label>
+                    <input type="text" id="editProfileName" placeholder="Enter profile name">
+                </div>
+                <div class="form-group">
+                    <label for="editProfileColor">Profile Color:</label>
+                    <input type="color" id="editProfileColor" value="#007bff">
+                    <div class="input-hint">Choose a color to theme the sidebar for this profile</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelEditProfileBtn" class="btn btn-secondary">Cancel</button>
+                <button id="saveEditProfileBtn" class="btn btn-primary">Save Changes</button>
             </div>
         </div>
     </div>

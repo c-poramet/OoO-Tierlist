@@ -1907,10 +1907,42 @@ body {
     gap: 5px;
 }
 
-.profile-actions .btn-small {
+.profile-action-btn {
     padding: 6px 12px;
     font-size: 11px;
     min-width: 60px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.profile-color-indicator {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 8px;
+    border: 1px solid #555;
+}
+
+input[type="color"] {
+    width: 50px;
+    height: 35px;
+    border: 1px solid #505050;
+    border-radius: 4px;
+    background: transparent;
+    cursor: pointer;
+    padding: 2px;
+}
+
+input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+input[type="color"]::-webkit-color-swatch {
+    border: none;
+    border-radius: 2px;
 }
 
 /* Responsive adjustments for profile modal */
