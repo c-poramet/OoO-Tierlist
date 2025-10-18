@@ -51,6 +51,9 @@ class FilmRankingApp {
         // Auto-fill button
         document.getElementById('autoFillBtn').addEventListener('click', () => this.autoFillTitle());
         
+        // Recalculate ELO button
+        document.getElementById('recalculateEloBtn').addEventListener('click', () => this.handleRecalculateElo());
+        
         // Export button
         document.getElementById('exportBtn').addEventListener('click', () => this.exportRankings());
         
@@ -1421,51 +1424,86 @@ class FilmRankingApp {
                     const result = filmA.comparisons[filmBId];
                     if (result === 'win') {
                         allComparisons.push({
-                            winnerA: filmA,
-                            loserB: filmB,
-                            timestamp: Math.min(filmA.id, filmB.id) // Use lower ID for consistent ordering
+                            winner: filmA,
+                            loser: filmB
                         });
                     } else if (result === 'loss') {
                         allComparisons.push({
-                            winnerA: filmB,
-                            loserB: filmA,
-                            timestamp: Math.min(filmA.id, filmB.id) // Use lower ID for consistent ordering
+                            winner: filmB,
+                            loser: filmA
                         });
                     }
                 }
             });
         });
 
-        // Sort comparisons by timestamp to replay them in order
-        allComparisons.sort((a, b) => a.timestamp - b.timestamp);
-
-        // Apply ELO calculations multiple times to ensure convergence
-        // This helps with transitive relationships (A beats B, B beats C, etc.)
-        for (let iteration = 0; iteration < 3; iteration++) {
-            allComparisons.forEach(comparison => {
-                const { winnerA, loserB } = comparison;
-                const ratingA = winnerA.eloRating;
-                const ratingB = loserB.eloRating;
+        // Iterate multiple times until ratings converge
+        // This ensures that path-dependency doesn't affect final ratings
+        // Each film's rating should reflect their true win percentage against the field
+        const maxIterations = 100; // Increased iterations for better convergence
+        const convergenceThreshold = 0.01; // Stricter convergence (was 0.1)
+        
+        for (let iteration = 0; iteration < maxIterations; iteration++) {
+            let totalChange = 0;
+            
+            // Process comparisons in CONSISTENT order (by winner ID, then loser ID)
+            // This ensures deterministic results while still converging properly
+            const sortedComparisons = [...allComparisons].sort((a, b) => {
+                const aKey = a.winner.id * 1000000 + a.loser.id;
+                const bKey = b.winner.id * 1000000 + b.loser.id;
+                return aKey - bKey;
+            });
+            
+            sortedComparisons.forEach(comparison => {
+                const { winner, loser } = comparison;
+                const ratingWinner = winner.eloRating;
+                const ratingLoser = loser.eloRating;
+                
+                // Use smaller K-factor for convergence (larger would oscillate)
+                const kFactor = 8; // Smaller K for better stability
                 
                 // Winner gets score 1, loser gets score 0
-                const newRatingA = this.calculateEloRating(ratingA, ratingB, 1, 16); // Lower K-factor for stability
-                const newRatingB = this.calculateEloRating(ratingB, ratingA, 0, 16);
+                const newRatingWinner = this.calculateEloRating(ratingWinner, ratingLoser, 1, kFactor);
+                const newRatingLoser = this.calculateEloRating(ratingLoser, ratingWinner, 0, kFactor);
                 
-                winnerA.eloRating = newRatingA;
-                loserB.eloRating = newRatingB;
+                // Track total change for convergence check
+                totalChange += Math.abs(newRatingWinner - ratingWinner);
+                totalChange += Math.abs(newRatingLoser - ratingLoser);
+                
+                winner.eloRating = newRatingWinner;
+                loser.eloRating = newRatingLoser;
             });
-        }
-        
-        // Final validation: ensure ELO roughly corresponds to win percentages
-        this.films.forEach(film => {
-            const winRate = this.calculateWinRate(film);
-            // Adjust ELO slightly based on win rate to prevent major discrepancies
-            if (winRate > 75 && film.eloRating < 1300) {
-                film.eloRating = Math.max(film.eloRating, 1300);
-            } else if (winRate < 25 && film.eloRating > 1100) {
-                film.eloRating = Math.min(film.eloRating, 1100);
+            
+            // Check for convergence
+            if (totalChange < convergenceThreshold) {
+                console.log(`ELO ratings converged after ${iteration + 1} iterations (total change: ${totalChange.toFixed(4)})`);
+                break;
             }
-        });
+            
+            if (iteration === maxIterations - 1) {
+                console.log(`ELO ratings reached max iterations (${maxIterations}) with total change: ${totalChange.toFixed(4)}`);
+            }
+        }
+    }
+
+    handleRecalculateElo() {
+        if (this.films.length === 0) {
+            alert('No films to recalculate ELO for. Add some items first!');
+            return;
+        }
+
+        if (confirm('Recalculate all ELO ratings based on comparison history?\n\nThis will use the fixed ELO algorithm (K-factor=32, single pass).')) {
+            console.log('Recalculating ELO ratings...');
+            this.recalculateEloRatings();
+            this.saveData();
+            this.updateDisplay();
+            this.showSuccessMessage('✅ ELO ratings recalculated successfully!');
+            
+            // If in ELO view, refresh it
+            if (this.currentView === 'elo') {
+                this.showEloView();
+            }
+        }
     }
 
     createEloFilmHTML(film, rank) {
