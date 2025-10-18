@@ -48,9 +48,16 @@
                 <div class="controls">
                     <button id="addFilmBtn" class="btn btn-primary">Add New Item</button>
                     <button id="recalculateEloBtn" class="btn btn-primary" title="Recalculate all ELO ratings">🔄 Recalculate ELO</button>
-                    <button id="exportBtn" class="btn btn-secondary">Export Rankings</button>
-                    <button id="exportImageBtn" class="btn btn-secondary">Export as Image</button>
-                    <button id="exportLinksBtn" class="btn btn-secondary">Export Links</button>
+                    
+                    <div class="dropdown-container">
+                        <button id="exportDropdownBtn" class="btn btn-secondary dropdown-toggle">📤 Export</button>
+                        <div id="exportDropdownMenu" class="dropdown-menu">
+                            <button id="exportBtn" class="dropdown-item">Export Rankings (JSON)</button>
+                            <button id="exportImageBtn" class="dropdown-item">Export as Image</button>
+                            <button id="exportLinksBtn" class="dropdown-item">Export Links</button>
+                        </div>
+                    </div>
+                    
                     <button id="importBtn" class="btn btn-secondary">Import Rankings</button>
                     <input type="file" id="importFile" accept=".json" style="display: none;">
                 </div>
