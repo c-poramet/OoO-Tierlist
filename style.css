@@ -142,6 +142,72 @@ body {
     font-size: 1.1rem;
 }
 
+/* Dropdown styles */
+.dropdown-container {
+    position: relative;
+    width: 100%;
+    margin-bottom: 12px;
+}
+
+.dropdown-toggle::after {
+    content: ' ▼';
+    font-size: 10px;
+    margin-left: 5px;
+}
+
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    right: 0;
+    background: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 8px;
+    margin-bottom: 5px;
+    box-shadow: 0 -4px 12px rgba(0,0,0,0.3);
+    z-index: 1000;
+    overflow: hidden;
+}
+
+.dropdown-menu.show {
+    display: block;
+    animation: dropdownSlideUp 0.2s ease;
+}
+
+@keyframes dropdownSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.dropdown-item {
+    width: 100%;
+    padding: 12px 20px;
+    border: none;
+    background: transparent;
+    color: #e0e0e0;
+    text-align: left;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.2s ease;
+    border-bottom: 1px solid #333;
+}
+
+.dropdown-item:last-child {
+    border-bottom: none;
+}
+
+.dropdown-item:hover {
+    background: #3a3a3a;
+    color: #ffffff;
+}
+
 .btn {
     padding: 12px 20px;
     border: none;
@@ -1641,4 +1707,64 @@ body {
         width: 100%;
         text-align: center;
     }
+}
+
+/* Tierlist styles */
+.tierlist-container {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 20px;
+    background: #f8f9fa;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.tier-row {
+    display: flex;
+    border-bottom: 1px solid #dee2e6;
+    min-height: 120px;
+}
+
+.tier-label {
+    width: 80px;
+    font-size: 32px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border-right: 1px solid #dee2e6;
+}
+
+.tier-films {
+    display: flex;
+    flex-wrap: wrap;
+    padding: 10px;
+    gap: 10px;
+    flex: 1;
+}
+
+.tier-film {
+    width: 100px;
+    height: 100px;
+    background-color: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+}
+
+.tier-film-title {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    padding: 4px;
+    font-size: 10px;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }

@@ -51,14 +51,41 @@ class FilmRankingApp {
         // Auto-fill button
         document.getElementById('autoFillBtn').addEventListener('click', () => this.autoFillTitle());
         
+        // Recheck comparisons button
+        document.getElementById('recheckBtn').addEventListener('click', () => this.recheckComparisons());
+        
+        // Recalculate ELO button
+        document.getElementById('recalculateEloBtn').addEventListener('click', () => this.handleRecalculateElo());
+        
+        // Export dropdown toggle
+        document.getElementById('exportDropdownBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleExportDropdown();
+        });
+        
         // Export button
-        document.getElementById('exportBtn').addEventListener('click', () => this.exportRankings());
+        document.getElementById('exportBtn').addEventListener('click', () => {
+            this.hideExportDropdown();
+            this.exportRankings();
+        });
         
         // Export as Image button
-        document.getElementById('exportImageBtn').addEventListener('click', () => this.showExportSettingsModal());
+        document.getElementById('exportImageBtn').addEventListener('click', () => {
+            this.hideExportDropdown();
+            this.showExportSettingsModal();
+        });
         
         // Export Links button
-        document.getElementById('exportLinksBtn').addEventListener('click', () => this.exportLinks());
+        document.getElementById('exportLinksBtn').addEventListener('click', () => {
+            this.hideExportDropdown();
+            this.exportLinks();
+        });
+        
+        // Export Tierlist button
+        document.getElementById('exportTierlistBtn').addEventListener('click', () => {
+            this.hideExportDropdown();
+            this.exportTierlist();
+        });
         
         // Export settings modal events
         document.getElementById('cancelExportBtn').addEventListener('click', () => this.hideExportSettingsModal());
@@ -85,10 +112,17 @@ class FilmRankingApp {
         document.getElementById('eloViewBtn').addEventListener('click', () => this.setViewMode('elo'));
         document.getElementById('detailViewBtn').addEventListener('click', () => this.setViewMode('detail'));
         
-        // Close modals when clicking outside
+        // Close modals and dropdown when clicking outside
         window.addEventListener('click', (e) => {
             if (e.target.classList.contains('modal')) {
                 this.hideModals();
+            }
+            // Close export dropdown if clicking outside
+            const dropdown = document.getElementById('exportDropdownMenu');
+            const dropdownBtn = document.getElementById('exportDropdownBtn');
+            if (dropdown && dropdown.classList.contains('show') && 
+                !dropdown.contains(e.target) && e.target !== dropdownBtn) {
+                this.hideExportDropdown();
             }
         });
         
@@ -215,6 +249,16 @@ class FilmRankingApp {
         document.getElementById('comparisonModal').style.display = 'none';
         // Hide undo button when closing modals
         document.getElementById('undoComparisonBtn').style.display = 'none';
+    }
+
+    toggleExportDropdown() {
+        const dropdown = document.getElementById('exportDropdownMenu');
+        dropdown.classList.toggle('show');
+    }
+
+    hideExportDropdown() {
+        const dropdown = document.getElementById('exportDropdownMenu');
+        dropdown.classList.remove('show');
     }
 
     async autoFillTitle() {
@@ -604,12 +648,24 @@ class FilmRankingApp {
         }
 
         console.log('Finishing comparisons for:', newFilm.title, 'Wins:', newFilm.wins);
-        // Calculate rank based on wins - more wins = higher rank (lower rank number)
-        newFilm.overallRank = this.films.length - newFilm.wins;
-        console.log('Calculated rank:', newFilm.overallRank);
+        
+        // Check if this is a recheck (film already exists) or new film addition
+        const isRecheck = this.films.some(f => f.id === newFilm.id);
+        
+        if (!isRecheck) {
+            // This is a new film being added
+            // Calculate rank based on wins - more wins = higher rank (lower rank number)
+            newFilm.overallRank = this.films.length - newFilm.wins;
+            console.log('Calculated rank:', newFilm.overallRank);
 
-        this.films.push(newFilm);
-        console.log('Films array length after push:', this.films.length);
+            this.films.push(newFilm);
+            console.log('Films array length after push:', this.films.length);
+            this.showSuccessMessage(`Added "${newFilm.title}" to your rankings!`);
+        } else {
+            // This is a recheck - films already exist
+            console.log('Recheck comparisons completed');
+            this.showSuccessMessage('✅ Missing comparisons completed!');
+        }
         
         // Clear current comparison now that we're done with it
         this.currentComparison = null;
@@ -617,7 +673,6 @@ class FilmRankingApp {
         this.recalculateAllRanks();
         this.saveData();
         this.updateDisplay();
-        this.showSuccessMessage(`Added "${newFilm.title}" to your rankings!`);
     }
 
     deleteFilm(filmId) {
@@ -1421,51 +1476,135 @@ class FilmRankingApp {
                     const result = filmA.comparisons[filmBId];
                     if (result === 'win') {
                         allComparisons.push({
-                            winnerA: filmA,
-                            loserB: filmB,
-                            timestamp: Math.min(filmA.id, filmB.id) // Use lower ID for consistent ordering
+                            winner: filmA,
+                            loser: filmB
                         });
                     } else if (result === 'loss') {
                         allComparisons.push({
-                            winnerA: filmB,
-                            loserB: filmA,
-                            timestamp: Math.min(filmA.id, filmB.id) // Use lower ID for consistent ordering
+                            winner: filmB,
+                            loser: filmA
                         });
                     }
                 }
             });
         });
 
-        // Sort comparisons by timestamp to replay them in order
-        allComparisons.sort((a, b) => a.timestamp - b.timestamp);
-
-        // Apply ELO calculations multiple times to ensure convergence
-        // This helps with transitive relationships (A beats B, B beats C, etc.)
-        for (let iteration = 0; iteration < 3; iteration++) {
-            allComparisons.forEach(comparison => {
-                const { winnerA, loserB } = comparison;
-                const ratingA = winnerA.eloRating;
-                const ratingB = loserB.eloRating;
+        // Iterate multiple times until ratings converge
+        // This ensures that path-dependency doesn't affect final ratings
+        // Each film's rating should reflect their true win percentage against the field
+        const maxIterations = 100; // Increased iterations for better convergence
+        const convergenceThreshold = 0.01; // Stricter convergence (was 0.1)
+        
+        for (let iteration = 0; iteration < maxIterations; iteration++) {
+            let totalChange = 0;
+            
+            // Process comparisons in CONSISTENT order (by winner ID, then loser ID)
+            // This ensures deterministic results while still converging properly
+            const sortedComparisons = [...allComparisons].sort((a, b) => {
+                const aKey = a.winner.id * 1000000 + a.loser.id;
+                const bKey = b.winner.id * 1000000 + b.loser.id;
+                return aKey - bKey;
+            });
+            
+            sortedComparisons.forEach(comparison => {
+                const { winner, loser } = comparison;
+                const ratingWinner = winner.eloRating;
+                const ratingLoser = loser.eloRating;
+                
+                // Use smaller K-factor for convergence (larger would oscillate)
+                const kFactor = 8; // Smaller K for better stability
                 
                 // Winner gets score 1, loser gets score 0
-                const newRatingA = this.calculateEloRating(ratingA, ratingB, 1, 16); // Lower K-factor for stability
-                const newRatingB = this.calculateEloRating(ratingB, ratingA, 0, 16);
+                const newRatingWinner = this.calculateEloRating(ratingWinner, ratingLoser, 1, kFactor);
+                const newRatingLoser = this.calculateEloRating(ratingLoser, ratingWinner, 0, kFactor);
                 
-                winnerA.eloRating = newRatingA;
-                loserB.eloRating = newRatingB;
+                // Track total change for convergence check
+                totalChange += Math.abs(newRatingWinner - ratingWinner);
+                totalChange += Math.abs(newRatingLoser - ratingLoser);
+                
+                winner.eloRating = newRatingWinner;
+                loser.eloRating = newRatingLoser;
             });
-        }
-        
-        // Final validation: ensure ELO roughly corresponds to win percentages
-        this.films.forEach(film => {
-            const winRate = this.calculateWinRate(film);
-            // Adjust ELO slightly based on win rate to prevent major discrepancies
-            if (winRate > 75 && film.eloRating < 1300) {
-                film.eloRating = Math.max(film.eloRating, 1300);
-            } else if (winRate < 25 && film.eloRating > 1100) {
-                film.eloRating = Math.min(film.eloRating, 1100);
+            
+            // Check for convergence
+            if (totalChange < convergenceThreshold) {
+                console.log(`ELO ratings converged after ${iteration + 1} iterations (total change: ${totalChange.toFixed(4)})`);
+                break;
             }
-        });
+            
+            if (iteration === maxIterations - 1) {
+                console.log(`ELO ratings reached max iterations (${maxIterations}) with total change: ${totalChange.toFixed(4)}`);
+            }
+        }
+    }
+
+    handleRecalculateElo() {
+        if (this.films.length === 0) {
+            alert('No films to recalculate ELO for. Add some items first!');
+            return;
+        }
+
+        if (confirm('Recalculate all ELO ratings based on comparison history?\n\nThis will use the fixed ELO algorithm (K-factor=32, single pass).')) {
+            console.log('Recalculating ELO ratings...');
+            this.recalculateEloRatings();
+            this.saveData();
+            this.updateDisplay();
+            this.showSuccessMessage('✅ ELO ratings recalculated successfully!');
+            
+            // If in ELO view, refresh it
+            if (this.currentView === 'elo') {
+                this.showEloView();
+            }
+        }
+    }
+
+    recheckComparisons() {
+        if (this.films.length < 2) {
+            alert('You need at least 2 films to compare!');
+            return;
+        }
+
+        // Find all missing comparisons
+        const missingComparisons = [];
+        
+        for (let i = 0; i < this.films.length; i++) {
+            for (let j = i + 1; j < this.films.length; j++) {
+                const filmA = this.films[i];
+                const filmB = this.films[j];
+                
+                // Check if these two films have been compared
+                const hasComparison = (filmA.comparisons && filmA.comparisons[filmB.id]) ||
+                                     (filmB.comparisons && filmB.comparisons[filmA.id]);
+                
+                if (!hasComparison) {
+                    missingComparisons.push({ filmA, filmB });
+                }
+            }
+        }
+
+        if (missingComparisons.length === 0) {
+            alert('✅ All films have been compared!\n\nNo missing comparisons found.');
+            return;
+        }
+
+        // Show confirmation with count
+        const totalPairs = (this.films.length * (this.films.length - 1)) / 2;
+        const completedPairs = totalPairs - missingComparisons.length;
+        const message = `Found ${missingComparisons.length} missing comparison${missingComparisons.length > 1 ? 's' : ''}!\n\n` +
+                       `Progress: ${completedPairs}/${totalPairs} pairs compared (${Math.round(completedPairs/totalPairs*100)}%)\n\n` +
+                       `Do you want to compare them now?`;
+        
+        if (confirm(message)) {
+            // Queue up missing comparisons
+            this.comparisonQueue = missingComparisons.map(pair => ({
+                newFilm: pair.filmA,
+                existingFilm: pair.filmB
+            }));
+            
+            console.log(`Queued ${this.comparisonQueue.length} missing comparisons`);
+            this.comparisonHistory = []; // Clear undo history for this session
+            this.processNextComparison();
+        }
     }
 
     createEloFilmHTML(film, rank) {
@@ -1592,6 +1731,295 @@ class FilmRankingApp {
         this.showSuccessMessage('Rankings exported successfully!');
     }
 
+    calculateTiers() {
+        if (this.films.length === 0) {
+            return [];
+        }
+
+        // Make sure ELO ratings are updated
+        this.recalculateEloRatings();
+        
+        // Sort films by ELO rating (highest to lowest)
+        const sortedFilms = [...this.films].sort((a, b) => (b.eloRating || 1200) - (a.eloRating || 1200));
+        
+        // Tier thresholds based on statistical distribution
+        // S: Top 5%
+        // A: Next 10%
+        // B: Next 20%
+        // C: Next 30%
+        // D: Next 20%
+        // F: Bottom 15%
+        
+        const thresholds = [
+            { tier: 'S', percentile: 0.05, color: '#FF7F7F' },  // Red
+            { tier: 'A', percentile: 0.15, color: '#FFBF7F' },  // Orange
+            { tier: 'B', percentile: 0.35, color: '#FFFF7F' },  // Yellow
+            { tier: 'C', percentile: 0.65, color: '#7FFF7F' },  // Green
+            { tier: 'D', percentile: 0.85, color: '#7F7FFF' },  // Blue
+            { tier: 'F', percentile: 1.00, color: '#BF7FBF' }   // Purple
+        ];
+        
+        const totalFilms = sortedFilms.length;
+        const tieredFilms = [];
+        
+        // Assign tiers based on percentile thresholds
+        for (let i = 0; i < sortedFilms.length; i++) {
+            const film = sortedFilms[i];
+            const percentile = (i + 1) / totalFilms;
+            
+            // Find the appropriate tier
+            const tierInfo = thresholds.find(t => percentile <= t.percentile);
+            
+            tieredFilms.push({
+                ...film,
+                tier: tierInfo.tier,
+                tierColor: tierInfo.color
+            });
+        }
+        
+        return tieredFilms;
+    }
+    
+    async exportTierlist() {
+        if (this.films.length === 0) {
+            alert('No films to export. Please add some films first.');
+            return;
+        }
+        
+        // Show loading message
+        this.showSuccessMessage('Generating tierlist...', 10000);
+        
+        // Calculate tiers for all films
+        const tieredFilms = this.calculateTiers();
+        
+        // Create a temporary container for the tierlist
+        const tempContainer = document.createElement('div');
+        tempContainer.style.cssText = `
+            position: fixed;
+            top: -9999px;
+            left: -9999px;
+            width: 1200px;
+            background: #f8f9fa;
+            padding: 20px;
+            font-family: 'Arial', sans-serif;
+        `;
+        document.body.appendChild(tempContainer);
+        
+        try {
+            // Create the header
+            const header = document.createElement('div');
+            header.style.cssText = `
+                text-align: center;
+                margin-bottom: 20px;
+            `;
+            
+            const title = document.createElement('h1');
+            title.style.cssText = `
+                font-size: 28px;
+                margin: 0;
+                color: #212529;
+            `;
+            title.textContent = 'Film Tierlist';
+            
+            const subtitle = document.createElement('p');
+            subtitle.style.cssText = `
+                font-size: 14px;
+                margin: 5px 0 0;
+                color: #6c757d;
+            `;
+            subtitle.textContent = `Generated on ${new Date().toLocaleDateString()} - ${this.films.length} films`;
+            
+            header.appendChild(title);
+            header.appendChild(subtitle);
+            tempContainer.appendChild(header);
+            
+            // Group films by tier
+            const tierGroups = {};
+            const tiers = ['S', 'A', 'B', 'C', 'D', 'F'];
+            
+            tiers.forEach(tier => {
+                tierGroups[tier] = tieredFilms.filter(film => film.tier === tier);
+            });
+            
+            // Create the tierlist
+            const tierlist = document.createElement('div');
+            tierlist.style.cssText = `
+                border: 1px solid #dee2e6;
+                border-radius: 8px;
+                overflow: hidden;
+            `;
+            
+            // Add each tier
+            tiers.forEach(tier => {
+                const films = tierGroups[tier];
+                if (films.length === 0) return;
+                
+                // Get the tier color from the first film
+                const tierColor = films[0].tierColor;
+                
+                const tierRow = document.createElement('div');
+                tierRow.style.cssText = `
+                    display: flex;
+                    border-bottom: 1px solid #dee2e6;
+                    min-height: 120px;
+                `;
+                
+                // Tier label
+                const tierLabel = document.createElement('div');
+                tierLabel.style.cssText = `
+                    width: 80px;
+                    background-color: ${tierColor};
+                    color: #000;
+                    font-size: 32px;
+                    font-weight: bold;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    flex-shrink: 0;
+                    border-right: 1px solid #dee2e6;
+                `;
+                tierLabel.textContent = tier;
+                
+                // Films container
+                const filmsContainer = document.createElement('div');
+                filmsContainer.style.cssText = `
+                    display: flex;
+                    flex-wrap: wrap;
+                    padding: 10px;
+                    gap: 10px;
+                    flex: 1;
+                `;
+                
+                // Add films to the container
+                films.forEach(film => {
+                    const filmItem = document.createElement('div');
+                    filmItem.style.cssText = `
+                        width: 100px;
+                        height: 100px;
+                        background-color: #fff;
+                        border: 1px solid #dee2e6;
+                        border-radius: 4px;
+                        overflow: hidden;
+                        position: relative;
+                        ${film.thumbnailUrl ? `
+                            background-image: url(${film.thumbnailUrl});
+                            background-size: cover;
+                            background-position: center;
+                        ` : ''}
+                    `;
+                    
+                    if (!film.thumbnailUrl) {
+                        const noThumbnail = document.createElement('div');
+                        noThumbnail.style.cssText = `
+                            width: 100%;
+                            height: 100%;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            color: #6c757d;
+                            font-size: 10px;
+                        `;
+                        noThumbnail.textContent = 'No Image';
+                        filmItem.appendChild(noThumbnail);
+                    }
+                    
+                    // Film title overlay
+                    const titleOverlay = document.createElement('div');
+                    titleOverlay.style.cssText = `
+                        position: absolute;
+                        bottom: 0;
+                        left: 0;
+                        right: 0;
+                        background: rgba(0, 0, 0, 0.7);
+                        color: #fff;
+                        padding: 4px;
+                        font-size: 10px;
+                        text-align: center;
+                        white-space: nowrap;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                    `;
+                    titleOverlay.textContent = film.title;
+                    filmItem.appendChild(titleOverlay);
+                    
+                    filmsContainer.appendChild(filmItem);
+                });
+                
+                tierRow.appendChild(tierLabel);
+                tierRow.appendChild(filmsContainer);
+                
+                tierlist.appendChild(tierRow);
+            });
+            
+            // Remove border from the last tier row
+            const tierRows = tierlist.querySelectorAll('div[style*="border-bottom"]');
+            if (tierRows.length > 0) {
+                tierRows[tierRows.length - 1].style.borderBottom = 'none';
+            }
+            
+            tempContainer.appendChild(tierlist);
+            
+            // Add a small delay to allow images to load
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Create footer with legend
+            const footer = document.createElement('div');
+            footer.style.cssText = `
+                margin-top: 20px;
+                display: flex;
+                justify-content: space-between;
+                color: #6c757d;
+                font-size: 12px;
+            `;
+            
+            const legend = document.createElement('div');
+            legend.style.cssText = `
+                display: flex;
+                gap: 10px;
+                align-items: center;
+            `;
+            
+            const tierLegend = document.createElement('span');
+            tierLegend.textContent = 'Tiers: S (Top 5%), A (Next 10%), B (Next 20%), C (Next 30%), D (Next 20%), F (Bottom 15%)';
+            
+            legend.appendChild(tierLegend);
+            footer.appendChild(legend);
+            
+            const credit = document.createElement('div');
+            credit.textContent = 'Generated by OoO Tierlist';
+            footer.appendChild(credit);
+            
+            tempContainer.appendChild(footer);
+            
+            // Convert to image and download
+            html2canvas(tempContainer, {
+                backgroundColor: '#f8f9fa',
+                scale: 2, // Higher resolution
+                useCORS: true, // Allow cross-origin images
+                allowTaint: true // Allow potentially tainted images
+            }).then(canvas => {
+                const url = canvas.toDataURL('image/png');
+                const a = document.createElement('a');
+                a.href = url;
+                
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                a.download = `film-tierlist-${timestamp}.png`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                this.showSuccessMessage('Tierlist exported as image!');
+            });
+        } catch (error) {
+            console.error('Export error:', error);
+            alert('Error generating tierlist image. Please try again.');
+        } finally {
+            // Clean up
+            document.body.removeChild(tempContainer);
+        }
+    }
+    
     exportLinks() {
         if (this.films.length === 0) {
             alert('No films to export. Please add some films first.');
