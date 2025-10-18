@@ -54,14 +54,29 @@ class FilmRankingApp {
         // Recalculate ELO button
         document.getElementById('recalculateEloBtn').addEventListener('click', () => this.handleRecalculateElo());
         
+        // Export dropdown toggle
+        document.getElementById('exportDropdownBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleExportDropdown();
+        });
+        
         // Export button
-        document.getElementById('exportBtn').addEventListener('click', () => this.exportRankings());
+        document.getElementById('exportBtn').addEventListener('click', () => {
+            this.hideExportDropdown();
+            this.exportRankings();
+        });
         
         // Export as Image button
-        document.getElementById('exportImageBtn').addEventListener('click', () => this.showExportSettingsModal());
+        document.getElementById('exportImageBtn').addEventListener('click', () => {
+            this.hideExportDropdown();
+            this.showExportSettingsModal();
+        });
         
         // Export Links button
-        document.getElementById('exportLinksBtn').addEventListener('click', () => this.exportLinks());
+        document.getElementById('exportLinksBtn').addEventListener('click', () => {
+            this.hideExportDropdown();
+            this.exportLinks();
+        });
         
         // Export settings modal events
         document.getElementById('cancelExportBtn').addEventListener('click', () => this.hideExportSettingsModal());
@@ -88,10 +103,17 @@ class FilmRankingApp {
         document.getElementById('eloViewBtn').addEventListener('click', () => this.setViewMode('elo'));
         document.getElementById('detailViewBtn').addEventListener('click', () => this.setViewMode('detail'));
         
-        // Close modals when clicking outside
+        // Close modals and dropdown when clicking outside
         window.addEventListener('click', (e) => {
             if (e.target.classList.contains('modal')) {
                 this.hideModals();
+            }
+            // Close export dropdown if clicking outside
+            const dropdown = document.getElementById('exportDropdownMenu');
+            const dropdownBtn = document.getElementById('exportDropdownBtn');
+            if (dropdown && dropdown.classList.contains('show') && 
+                !dropdown.contains(e.target) && e.target !== dropdownBtn) {
+                this.hideExportDropdown();
             }
         });
         
@@ -218,6 +240,16 @@ class FilmRankingApp {
         document.getElementById('comparisonModal').style.display = 'none';
         // Hide undo button when closing modals
         document.getElementById('undoComparisonBtn').style.display = 'none';
+    }
+
+    toggleExportDropdown() {
+        const dropdown = document.getElementById('exportDropdownMenu');
+        dropdown.classList.toggle('show');
+    }
+
+    hideExportDropdown() {
+        const dropdown = document.getElementById('exportDropdownMenu');
+        dropdown.classList.remove('show');
     }
 
     async autoFillTitle() {
