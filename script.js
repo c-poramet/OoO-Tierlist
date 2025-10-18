@@ -81,6 +81,12 @@ class FilmRankingApp {
             this.exportLinks();
         });
         
+        // Export Tierlist button
+        document.getElementById('exportTierlistBtn').addEventListener('click', () => {
+            this.hideExportDropdown();
+            this.exportTierlist();
+        });
+        
         // Export settings modal events
         document.getElementById('cancelExportBtn').addEventListener('click', () => this.hideExportSettingsModal());
         document.getElementById('confirmExportBtn').addEventListener('click', () => this.handleExportConfirm());
@@ -1725,6 +1731,295 @@ class FilmRankingApp {
         this.showSuccessMessage('Rankings exported successfully!');
     }
 
+    calculateTiers() {
+        if (this.films.length === 0) {
+            return [];
+        }
+
+        // Make sure ELO ratings are updated
+        this.recalculateEloRatings();
+        
+        // Sort films by ELO rating (highest to lowest)
+        const sortedFilms = [...this.films].sort((a, b) => (b.eloRating || 1200) - (a.eloRating || 1200));
+        
+        // Tier thresholds based on statistical distribution
+        // S: Top 5%
+        // A: Next 10%
+        // B: Next 20%
+        // C: Next 30%
+        // D: Next 20%
+        // F: Bottom 15%
+        
+        const thresholds = [
+            { tier: 'S', percentile: 0.05, color: '#FF7F7F' },  // Red
+            { tier: 'A', percentile: 0.15, color: '#FFBF7F' },  // Orange
+            { tier: 'B', percentile: 0.35, color: '#FFFF7F' },  // Yellow
+            { tier: 'C', percentile: 0.65, color: '#7FFF7F' },  // Green
+            { tier: 'D', percentile: 0.85, color: '#7F7FFF' },  // Blue
+            { tier: 'F', percentile: 1.00, color: '#BF7FBF' }   // Purple
+        ];
+        
+        const totalFilms = sortedFilms.length;
+        const tieredFilms = [];
+        
+        // Assign tiers based on percentile thresholds
+        for (let i = 0; i < sortedFilms.length; i++) {
+            const film = sortedFilms[i];
+            const percentile = (i + 1) / totalFilms;
+            
+            // Find the appropriate tier
+            const tierInfo = thresholds.find(t => percentile <= t.percentile);
+            
+            tieredFilms.push({
+                ...film,
+                tier: tierInfo.tier,
+                tierColor: tierInfo.color
+            });
+        }
+        
+        return tieredFilms;
+    }
+    
+    async exportTierlist() {
+        if (this.films.length === 0) {
+            alert('No films to export. Please add some films first.');
+            return;
+        }
+        
+        // Show loading message
+        this.showSuccessMessage('Generating tierlist...', 10000);
+        
+        // Calculate tiers for all films
+        const tieredFilms = this.calculateTiers();
+        
+        // Create a temporary container for the tierlist
+        const tempContainer = document.createElement('div');
+        tempContainer.style.cssText = `
+            position: fixed;
+            top: -9999px;
+            left: -9999px;
+            width: 1200px;
+            background: #f8f9fa;
+            padding: 20px;
+            font-family: 'Arial', sans-serif;
+        `;
+        document.body.appendChild(tempContainer);
+        
+        try {
+            // Create the header
+            const header = document.createElement('div');
+            header.style.cssText = `
+                text-align: center;
+                margin-bottom: 20px;
+            `;
+            
+            const title = document.createElement('h1');
+            title.style.cssText = `
+                font-size: 28px;
+                margin: 0;
+                color: #212529;
+            `;
+            title.textContent = 'Film Tierlist';
+            
+            const subtitle = document.createElement('p');
+            subtitle.style.cssText = `
+                font-size: 14px;
+                margin: 5px 0 0;
+                color: #6c757d;
+            `;
+            subtitle.textContent = `Generated on ${new Date().toLocaleDateString()} - ${this.films.length} films`;
+            
+            header.appendChild(title);
+            header.appendChild(subtitle);
+            tempContainer.appendChild(header);
+            
+            // Group films by tier
+            const tierGroups = {};
+            const tiers = ['S', 'A', 'B', 'C', 'D', 'F'];
+            
+            tiers.forEach(tier => {
+                tierGroups[tier] = tieredFilms.filter(film => film.tier === tier);
+            });
+            
+            // Create the tierlist
+            const tierlist = document.createElement('div');
+            tierlist.style.cssText = `
+                border: 1px solid #dee2e6;
+                border-radius: 8px;
+                overflow: hidden;
+            `;
+            
+            // Add each tier
+            tiers.forEach(tier => {
+                const films = tierGroups[tier];
+                if (films.length === 0) return;
+                
+                // Get the tier color from the first film
+                const tierColor = films[0].tierColor;
+                
+                const tierRow = document.createElement('div');
+                tierRow.style.cssText = `
+                    display: flex;
+                    border-bottom: 1px solid #dee2e6;
+                    min-height: 120px;
+                `;
+                
+                // Tier label
+                const tierLabel = document.createElement('div');
+                tierLabel.style.cssText = `
+                    width: 80px;
+                    background-color: ${tierColor};
+                    color: #000;
+                    font-size: 32px;
+                    font-weight: bold;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    flex-shrink: 0;
+                    border-right: 1px solid #dee2e6;
+                `;
+                tierLabel.textContent = tier;
+                
+                // Films container
+                const filmsContainer = document.createElement('div');
+                filmsContainer.style.cssText = `
+                    display: flex;
+                    flex-wrap: wrap;
+                    padding: 10px;
+                    gap: 10px;
+                    flex: 1;
+                `;
+                
+                // Add films to the container
+                films.forEach(film => {
+                    const filmItem = document.createElement('div');
+                    filmItem.style.cssText = `
+                        width: 100px;
+                        height: 100px;
+                        background-color: #fff;
+                        border: 1px solid #dee2e6;
+                        border-radius: 4px;
+                        overflow: hidden;
+                        position: relative;
+                        ${film.thumbnailUrl ? `
+                            background-image: url(${film.thumbnailUrl});
+                            background-size: cover;
+                            background-position: center;
+                        ` : ''}
+                    `;
+                    
+                    if (!film.thumbnailUrl) {
+                        const noThumbnail = document.createElement('div');
+                        noThumbnail.style.cssText = `
+                            width: 100%;
+                            height: 100%;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            color: #6c757d;
+                            font-size: 10px;
+                        `;
+                        noThumbnail.textContent = 'No Image';
+                        filmItem.appendChild(noThumbnail);
+                    }
+                    
+                    // Film title overlay
+                    const titleOverlay = document.createElement('div');
+                    titleOverlay.style.cssText = `
+                        position: absolute;
+                        bottom: 0;
+                        left: 0;
+                        right: 0;
+                        background: rgba(0, 0, 0, 0.7);
+                        color: #fff;
+                        padding: 4px;
+                        font-size: 10px;
+                        text-align: center;
+                        white-space: nowrap;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                    `;
+                    titleOverlay.textContent = film.title;
+                    filmItem.appendChild(titleOverlay);
+                    
+                    filmsContainer.appendChild(filmItem);
+                });
+                
+                tierRow.appendChild(tierLabel);
+                tierRow.appendChild(filmsContainer);
+                
+                tierlist.appendChild(tierRow);
+            });
+            
+            // Remove border from the last tier row
+            const tierRows = tierlist.querySelectorAll('div[style*="border-bottom"]');
+            if (tierRows.length > 0) {
+                tierRows[tierRows.length - 1].style.borderBottom = 'none';
+            }
+            
+            tempContainer.appendChild(tierlist);
+            
+            // Add a small delay to allow images to load
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Create footer with legend
+            const footer = document.createElement('div');
+            footer.style.cssText = `
+                margin-top: 20px;
+                display: flex;
+                justify-content: space-between;
+                color: #6c757d;
+                font-size: 12px;
+            `;
+            
+            const legend = document.createElement('div');
+            legend.style.cssText = `
+                display: flex;
+                gap: 10px;
+                align-items: center;
+            `;
+            
+            const tierLegend = document.createElement('span');
+            tierLegend.textContent = 'Tiers: S (Top 5%), A (Next 10%), B (Next 20%), C (Next 30%), D (Next 20%), F (Bottom 15%)';
+            
+            legend.appendChild(tierLegend);
+            footer.appendChild(legend);
+            
+            const credit = document.createElement('div');
+            credit.textContent = 'Generated by OoO Tierlist';
+            footer.appendChild(credit);
+            
+            tempContainer.appendChild(footer);
+            
+            // Convert to image and download
+            html2canvas(tempContainer, {
+                backgroundColor: '#f8f9fa',
+                scale: 2, // Higher resolution
+                useCORS: true, // Allow cross-origin images
+                allowTaint: true // Allow potentially tainted images
+            }).then(canvas => {
+                const url = canvas.toDataURL('image/png');
+                const a = document.createElement('a');
+                a.href = url;
+                
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                a.download = `film-tierlist-${timestamp}.png`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                this.showSuccessMessage('Tierlist exported as image!');
+            });
+        } catch (error) {
+            console.error('Export error:', error);
+            alert('Error generating tierlist image. Please try again.');
+        } finally {
+            // Clean up
+            document.body.removeChild(tempContainer);
+        }
+    }
+    
     exportLinks() {
         if (this.films.length === 0) {
             alert('No films to export. Please add some films first.');
