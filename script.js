@@ -58,36 +58,51 @@ class FilmRankingApp {
         document.getElementById('recheckBtn').addEventListener('click', () => this.recheckComparisons());
         
         // Recalculate ELO button
-        document.getElementById('recalculateEloBtn').addEventListener('click', () => this.handleRecalculateElo());
+        document.getElementById('recalculateEloBtn').addEventListener('click', () => {
+            this.hideSettingsDropdown();
+            this.handleRecalculateElo();
+        });
         
-        // Export dropdown toggle
-        document.getElementById('exportDropdownBtn').addEventListener('click', (e) => {
+        // Settings dropdown toggle
+        document.getElementById('settingsDropdownBtn').addEventListener('click', (e) => {
             e.stopPropagation();
-            this.toggleExportDropdown();
+            this.toggleSettingsDropdown();
+        });
+        
+        // Recheck button
+        document.getElementById('recheckBtn').addEventListener('click', () => {
+            this.hideSettingsDropdown();
+            this.handleRecheck();
         });
         
         // Export button
         document.getElementById('exportBtn').addEventListener('click', () => {
-            this.hideExportDropdown();
+            this.hideSettingsDropdown();
             this.exportRankings();
         });
         
         // Export as Image button
         document.getElementById('exportImageBtn').addEventListener('click', () => {
-            this.hideExportDropdown();
+            this.hideSettingsDropdown();
             this.showExportSettingsModal();
         });
         
         // Export Links button
         document.getElementById('exportLinksBtn').addEventListener('click', () => {
-            this.hideExportDropdown();
+            this.hideSettingsDropdown();
             this.exportLinks();
         });
         
         // Export Tierlist button
         document.getElementById('exportTierlistBtn').addEventListener('click', () => {
-            this.hideExportDropdown();
+            this.hideSettingsDropdown();
             this.exportTierlist();
+        });
+        
+        // Import button
+        document.getElementById('importBtn').addEventListener('click', () => {
+            this.hideSettingsDropdown();
+            document.getElementById('importFile').click();
         });
         
         // Export settings modal events
@@ -120,12 +135,12 @@ class FilmRankingApp {
             if (e.target.classList.contains('modal')) {
                 this.hideModals();
             }
-            // Close export dropdown if clicking outside
-            const dropdown = document.getElementById('exportDropdownMenu');
-            const dropdownBtn = document.getElementById('exportDropdownBtn');
+            // Close settings dropdown if clicking outside
+            const dropdown = document.getElementById('settingsDropdownMenu');
+            const dropdownBtn = document.getElementById('settingsDropdownBtn');
             if (dropdown && dropdown.classList.contains('show') && 
                 !dropdown.contains(e.target) && e.target !== dropdownBtn) {
-                this.hideExportDropdown();
+                this.hideSettingsDropdown();
             }
         });
         
@@ -296,13 +311,13 @@ class FilmRankingApp {
         document.getElementById('undoComparisonBtn').style.display = 'none';
     }
 
-    toggleExportDropdown() {
-        const dropdown = document.getElementById('exportDropdownMenu');
+    toggleSettingsDropdown() {
+        const dropdown = document.getElementById('settingsDropdownMenu');
         dropdown.classList.toggle('show');
     }
 
-    hideExportDropdown() {
-        const dropdown = document.getElementById('exportDropdownMenu');
+    hideSettingsDropdown() {
+        const dropdown = document.getElementById('settingsDropdownMenu');
         dropdown.classList.remove('show');
     }
 
@@ -2789,6 +2804,12 @@ class FilmRankingApp {
         if (!this.profiles || !this.profiles[profileId]) {
             console.error('Profile not found:', profileId);
             return;
+        }
+        
+        // Close profile modal if it's open
+        const profileModal = document.getElementById('profileModal');
+        if (profileModal && profileModal.style.display === 'block') {
+            profileModal.style.display = 'none';
         }
         
         this.currentProfile = profileId;
