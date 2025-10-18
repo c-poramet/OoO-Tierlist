@@ -51,6 +51,9 @@ class FilmRankingApp {
         // Auto-fill button
         document.getElementById('autoFillBtn').addEventListener('click', () => this.autoFillTitle());
         
+        // Recheck comparisons button
+        document.getElementById('recheckBtn').addEventListener('click', () => this.recheckComparisons());
+        
         // Recalculate ELO button
         document.getElementById('recalculateEloBtn').addEventListener('click', () => this.handleRecalculateElo());
         
@@ -639,12 +642,24 @@ class FilmRankingApp {
         }
 
         console.log('Finishing comparisons for:', newFilm.title, 'Wins:', newFilm.wins);
-        // Calculate rank based on wins - more wins = higher rank (lower rank number)
-        newFilm.overallRank = this.films.length - newFilm.wins;
-        console.log('Calculated rank:', newFilm.overallRank);
+        
+        // Check if this is a recheck (film already exists) or new film addition
+        const isRecheck = this.films.some(f => f.id === newFilm.id);
+        
+        if (!isRecheck) {
+            // This is a new film being added
+            // Calculate rank based on wins - more wins = higher rank (lower rank number)
+            newFilm.overallRank = this.films.length - newFilm.wins;
+            console.log('Calculated rank:', newFilm.overallRank);
 
-        this.films.push(newFilm);
-        console.log('Films array length after push:', this.films.length);
+            this.films.push(newFilm);
+            console.log('Films array length after push:', this.films.length);
+            this.showSuccessMessage(`Added "${newFilm.title}" to your rankings!`);
+        } else {
+            // This is a recheck - films already exist
+            console.log('Recheck comparisons completed');
+            this.showSuccessMessage('✅ Missing comparisons completed!');
+        }
         
         // Clear current comparison now that we're done with it
         this.currentComparison = null;
@@ -652,7 +667,6 @@ class FilmRankingApp {
         this.recalculateAllRanks();
         this.saveData();
         this.updateDisplay();
-        this.showSuccessMessage(`Added "${newFilm.title}" to your rankings!`);
     }
 
     deleteFilm(filmId) {
@@ -1535,6 +1549,55 @@ class FilmRankingApp {
             if (this.currentView === 'elo') {
                 this.showEloView();
             }
+        }
+    }
+
+    recheckComparisons() {
+        if (this.films.length < 2) {
+            alert('You need at least 2 films to compare!');
+            return;
+        }
+
+        // Find all missing comparisons
+        const missingComparisons = [];
+        
+        for (let i = 0; i < this.films.length; i++) {
+            for (let j = i + 1; j < this.films.length; j++) {
+                const filmA = this.films[i];
+                const filmB = this.films[j];
+                
+                // Check if these two films have been compared
+                const hasComparison = (filmA.comparisons && filmA.comparisons[filmB.id]) ||
+                                     (filmB.comparisons && filmB.comparisons[filmA.id]);
+                
+                if (!hasComparison) {
+                    missingComparisons.push({ filmA, filmB });
+                }
+            }
+        }
+
+        if (missingComparisons.length === 0) {
+            alert('✅ All films have been compared!\n\nNo missing comparisons found.');
+            return;
+        }
+
+        // Show confirmation with count
+        const totalPairs = (this.films.length * (this.films.length - 1)) / 2;
+        const completedPairs = totalPairs - missingComparisons.length;
+        const message = `Found ${missingComparisons.length} missing comparison${missingComparisons.length > 1 ? 's' : ''}!\n\n` +
+                       `Progress: ${completedPairs}/${totalPairs} pairs compared (${Math.round(completedPairs/totalPairs*100)}%)\n\n` +
+                       `Do you want to compare them now?`;
+        
+        if (confirm(message)) {
+            // Queue up missing comparisons
+            this.comparisonQueue = missingComparisons.map(pair => ({
+                newFilm: pair.filmA,
+                existingFilm: pair.filmB
+            }));
+            
+            console.log(`Queued ${this.comparisonQueue.length} missing comparisons`);
+            this.comparisonHistory = []; // Clear undo history for this session
+            this.processNextComparison();
         }
     }
 
