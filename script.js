@@ -1,6 +1,8 @@
 class FilmRankingApp {
     constructor() {
-        this.films = [];
+        this.profiles = {}; // Store all profiles
+        this.currentProfile = null; // Current active profile
+        this.films = []; // Will be set from current profile
         this.currentComparison = null;
         this.comparisonQueue = [];
         this.comparisonHistory = []; // Track comparison history for undo
@@ -8,7 +10,7 @@ class FilmRankingApp {
         this.currentDetailIndex = 0; // For detail view navigation
         this.detailSectionsHidden = false; // Track if detail sections are collapsed
         
-        this.loadData();
+        this.loadProfiles();
         this.setupEventListeners();
         this.updateDisplay();
         
@@ -153,6 +155,32 @@ class FilmRankingApp {
                 }
             }
         });
+        
+        // Profile management event listeners
+        const profileBtn = document.getElementById('profileBtn');
+        if (profileBtn) {
+            profileBtn.addEventListener('click', () => this.showProfileModal());
+        }
+        
+        const profileModalClose = document.querySelectorAll('#profileModal .close');
+        profileModalClose.forEach(btn => {
+            btn.addEventListener('click', () => this.hideProfileModal());
+        });
+        
+        const cancelProfileBtn = document.getElementById('cancelProfileBtn');
+        if (cancelProfileBtn) {
+            cancelProfileBtn.addEventListener('click', () => this.hideProfileModal());
+        }
+        
+        const createProfileBtn = document.getElementById('createProfileBtn');
+        if (createProfileBtn) {
+            createProfileBtn.addEventListener('click', () => this.createProfile());
+        }
+        
+        const shareFilmsCheckbox = document.getElementById('shareFilmsCheckbox');
+        if (shareFilmsCheckbox) {
+            shareFilmsCheckbox.addEventListener('change', () => this.toggleShareFilms());
+        }
     }
 
     showAddFilmModal() {
@@ -478,6 +506,8 @@ class FilmRankingApp {
 
         if (this.films.length > 0) {
             await this.startComparisons(filmData);
+            // Handle cross-profile comparisons
+            this.handleCrossProfileComparisons(filmData);
         } else {
             // First item, no comparisons needed
             this.films.push(filmData);
@@ -2671,44 +2701,179 @@ class FilmRankingApp {
     }
 
     saveData() {
-        const data = {
-            films: this.films
+        // Legacy function - now handled by saveProfiles
+        this.saveProfiles();
+    }
+
+    loadProfiles() {
+        try {
+            const saved = localStorage.getItem('filmRankingProfiles');
+            if (saved) {
+                this.profiles = JSON.parse(saved);
+            }
+            
+            // Get current profile from localStorage
+            const currentProfileId = localStorage.getItem('currentProfile');
+            
+            // If no profiles exist, create default profile
+            if (Object.keys(this.profiles).length === 0) {
+                this.createDefaultProfile();
+            } else if (currentProfileId && this.profiles[currentProfileId]) {
+                this.switchToProfile(currentProfileId);
+            } else {
+                // Switch to first available profile
+                const firstProfileId = Object.keys(this.profiles)[0];
+                this.switchToProfile(firstProfileId);
+            }
+            
+            // Try to load legacy data if no profiles exist
+            this.loadLegacyData();
+            
+        } catch (e) {
+            console.error('Error loading profiles:', e);
+            this.createDefaultProfile();
+        }
+    }
+    
+    createDefaultProfile() {
+        const defaultProfile = {
+            id: 'default',
+            name: 'My Rankings',
+            films: [],
+            parentProfile: null,
+            createdAt: Date.now()
         };
-        localStorage.setItem('filmRankings', JSON.stringify(data));
+        
+        this.profiles['default'] = defaultProfile;
+        this.switchToProfile('default');
+        // Don't call saveProfiles() here to avoid recursion during initialization
+    }
+    
+    loadLegacyData() {
+        // Try to load old single-profile data
+        try {
+            const legacyData = localStorage.getItem('filmRankings');
+            if (legacyData && this.films.length === 0) {
+                const data = JSON.parse(legacyData);
+                if (data.films && data.films.length > 0) {
+                    this.films = data.films;
+                    this.profiles[this.currentProfile].films = data.films;
+                    this.saveProfiles();
+                    // Remove legacy data
+                    localStorage.removeItem('filmRankings');
+                }
+            }
+        } catch (e) {
+            console.log('No legacy data to migrate');
+        }
+    }
+    
+    switchToProfile(profileId) {
+        if (!this.profiles || !this.profiles[profileId]) {
+            console.error('Profile not found:', profileId);
+            return;
+        }
+        
+        this.currentProfile = profileId;
+        const profile = this.profiles[profileId];
+        
+        // If this profile shares films with a parent, use parent's films
+        if (profile.parentProfile && this.profiles[profile.parentProfile]) {
+            this.films = this.profiles[profile.parentProfile].films || [];
+        } else {
+            this.films = profile.films || [];
+        }
+        
+        // Ensure all films have proper structure
+        this.films.forEach(film => {
+            if (!film.comparisons) film.comparisons = {};
+            if (film.wins === undefined) film.wins = 0;
+            if (film.eloRating === undefined) film.eloRating = 1200;
+            if (film.customThumbnail === undefined) film.customThumbnail = null;
+        });
+        
+        // Load profile-specific comparison data
+        this.loadProfileComparisons();
+        
+        // Save current profile selection
+        localStorage.setItem('currentProfile', profileId);
+        
+        // Recalculate everything
+        this.recalculateAllRanks();
+        
+        // Update UI
+        this.updateProfileSelector();
+        this.updateDisplay();
+    }
+    
+    loadProfileComparisons() {
+        // Load profile-specific comparison data (rankings, ELO, etc.)
+        const profile = this.profiles[this.currentProfile];
+        
+        if (profile.comparisons) {
+            // Apply profile-specific comparison data to films
+            this.films.forEach(film => {
+                if (profile.comparisons[film.id]) {
+                    Object.assign(film, profile.comparisons[film.id]);
+                }
+            });
+        }
+    }
+    
+    saveProfileComparisons() {
+        // Save current comparison state to the active profile
+        const profile = this.profiles[this.currentProfile];
+        if (!profile.comparisons) profile.comparisons = {};
+        
+        this.films.forEach(film => {
+            profile.comparisons[film.id] = {
+                comparisons: film.comparisons,
+                wins: film.wins,
+                eloRating: film.eloRating,
+                overallRank: film.overallRank,
+                isTied: film.isTied
+            };
+        });
+        
+        // Don't call saveProfiles() here to avoid recursion
+    }
+    
+    saveProfiles() {
+        // Save films to the appropriate profile
+        const profile = this.profiles[this.currentProfile];
+        
+        if (profile.parentProfile) {
+            // If this profile shares films, save to parent
+            this.profiles[profile.parentProfile].films = this.films;
+        } else {
+            // Save to current profile
+            profile.films = this.films;
+        }
+        
+        // Save comparison data
+        this.saveProfileComparisons();
+        
+        // Save all profiles
+        localStorage.setItem('filmRankingProfiles', JSON.stringify(this.profiles));
+        
+        // Load and restore view mode
+        const savedViewMode = localStorage.getItem('filmRankingsViewMode');
+        if (savedViewMode) {
+            this.currentView = savedViewMode;
+            // Update button states
+            document.querySelectorAll('.btn-view').forEach(btn => {
+                btn.classList.remove('active-view');
+            });
+            const viewBtn = document.getElementById(`${savedViewMode}ViewBtn`);
+            if (viewBtn) {
+                viewBtn.classList.add('active-view');
+            }
+        }
     }
 
     loadData() {
-        try {
-            const saved = localStorage.getItem('filmRankings');
-            if (saved) {
-                const data = JSON.parse(saved);
-                this.films = data.films || [];
-                
-                // Ensure all loaded films have the comparisons structure
-                this.films.forEach(film => {
-                    if (!film.comparisons) film.comparisons = {};
-                    if (film.wins === undefined) film.wins = 0;
-                    if (film.eloRating === undefined) film.eloRating = 1200;
-                    if (film.customThumbnail === undefined) film.customThumbnail = null;
-                });
-                
-                // Recalculate everything to ensure consistency
-                this.recalculateAllRanks();
-            }
-            
-            // Load and restore view mode
-            const savedViewMode = localStorage.getItem('filmRankingsViewMode');
-            if (savedViewMode) {
-                this.currentView = savedViewMode;
-                // Update button states
-                document.querySelectorAll('.btn-view').forEach(btn => {
-                    btn.classList.remove('active-view');
-                });
-                document.getElementById(`${savedViewMode}ViewBtn`).classList.add('active-view');
-            }
-        } catch (e) {
-            console.error('Error loading saved data:', e);
-        }
+        // Legacy function - now handled by loadProfiles
+        this.loadProfiles();
     }
 
     showSuccessMessage(message) {
@@ -2761,6 +2926,208 @@ class FilmRankingApp {
             toast.style.animation = 'slideOut 0.3s ease';
             setTimeout(() => document.body.removeChild(toast), 300);
         }, 2000);
+    }
+    
+    // Profile Management Functions
+    showProfileModal() {
+        const modal = document.getElementById('profileModal');
+        modal.style.display = 'block';
+        this.updateProfileList();
+    }
+    
+    hideProfileModal() {
+        document.getElementById('profileModal').style.display = 'none';
+        this.resetProfileForm();
+    }
+    
+    resetProfileForm() {
+        document.getElementById('profileName').value = '';
+        document.getElementById('shareFilmsCheckbox').checked = false;
+        document.getElementById('parentProfileSelect').value = '';
+        document.getElementById('parentProfileContainer').style.display = 'none';
+    }
+    
+    updateProfileList() {
+        const profileList = document.getElementById('profileList');
+        profileList.innerHTML = '';
+        
+        Object.values(this.profiles).forEach(profile => {
+            const profileItem = document.createElement('div');
+            profileItem.className = 'profile-item';
+            if (profile.id === this.currentProfile) {
+                profileItem.classList.add('active-profile');
+            }
+            
+            const parentInfo = profile.parentProfile ? 
+                `<span class="profile-parent">(shares films with ${this.profiles[profile.parentProfile].name})</span>` : '';
+            
+            profileItem.innerHTML = `
+                <div class="profile-info">
+                    <div class="profile-name">${profile.name}</div>
+                    <div class="profile-details">
+                        ${this.films.length} films ${parentInfo}
+                    </div>
+                </div>
+                <div class="profile-actions">
+                    <button class="btn btn-small btn-primary" onclick="app.switchToProfile('${profile.id}')">
+                        ${profile.id === this.currentProfile ? 'Current' : 'Switch'}
+                    </button>
+                    ${profile.id !== 'default' ? `
+                        <button class="btn btn-small btn-danger" onclick="app.deleteProfile('${profile.id}')">Delete</button>
+                    ` : ''}
+                </div>
+            `;
+            
+            profileList.appendChild(profileItem);
+        });
+    }
+    
+    updateProfileSelector() {
+        const selector = document.getElementById('currentProfileName');
+        if (selector && this.currentProfile && this.profiles[this.currentProfile]) {
+            const profile = this.profiles[this.currentProfile];
+            selector.textContent = profile.name;
+        }
+        
+        // Update parent profile dropdown
+        const parentSelect = document.getElementById('parentProfileSelect');
+        if (parentSelect) {
+            parentSelect.innerHTML = '<option value="">Select profile to share films with...</option>';
+            Object.values(this.profiles).forEach(profile => {
+                if (!profile.parentProfile) { // Only show profiles that have their own films
+                    const option = document.createElement('option');
+                    option.value = profile.id;
+                    option.textContent = profile.name;
+                    parentSelect.appendChild(option);
+                }
+            });
+        }
+    }
+    
+    createProfile() {
+        const name = document.getElementById('profileName').value.trim();
+        const shareFilms = document.getElementById('shareFilmsCheckbox').checked;
+        const parentProfileId = document.getElementById('parentProfileSelect').value;
+        
+        if (!name) {
+            alert('Please enter a profile name');
+            return;
+        }
+        
+        const profileId = 'profile_' + Date.now();
+        const newProfile = {
+            id: profileId,
+            name: name,
+            films: [],
+            parentProfile: shareFilms ? parentProfileId : null,
+            createdAt: Date.now()
+        };
+        
+        // Initialize comparison data
+        newProfile.comparisons = {};
+        
+        this.profiles[profileId] = newProfile;
+        this.saveProfiles();
+        
+        this.hideProfileModal();
+        this.switchToProfile(profileId);
+        this.showSuccessMessage(`Profile "${name}" created successfully!`);
+    }
+    
+    deleteProfile(profileId) {
+        if (profileId === 'default') {
+            alert('Cannot delete the default profile');
+            return;
+        }
+        
+        const profile = this.profiles[profileId];
+        if (!profile) return;
+        
+        if (confirm(`Are you sure you want to delete the profile "${profile.name}"?\n\nThis action cannot be undone.`)) {
+            // Check if any other profiles depend on this one
+            const dependentProfiles = Object.values(this.profiles).filter(p => p.parentProfile === profileId);
+            if (dependentProfiles.length > 0) {
+                alert(`Cannot delete this profile because the following profiles share its films:\n${dependentProfiles.map(p => p.name).join(', ')}`);
+                return;
+            }
+            
+            delete this.profiles[profileId];
+            
+            // If we're deleting the current profile, switch to default
+            if (this.currentProfile === profileId) {
+                this.switchToProfile('default');
+            }
+            
+            this.saveProfiles();
+            this.updateProfileList();
+            this.showSuccessMessage(`Profile "${profile.name}" deleted`);
+        }
+    }
+    
+    toggleShareFilms() {
+        const checkbox = document.getElementById('shareFilmsCheckbox');
+        const container = document.getElementById('parentProfileContainer');
+        
+        if (checkbox.checked) {
+            container.style.display = 'block';
+        } else {
+            container.style.display = 'none';
+            document.getElementById('parentProfileSelect').value = '';
+        }
+    }
+    
+    handleCrossProfileComparisons(newFilm) {
+        // When a film is added to a profile that has child profiles, 
+        // we need to handle comparisons across all related profiles
+        const currentProfile = this.profiles[this.currentProfile];
+        
+        // Find profiles that share films with the current profile
+        const relatedProfiles = Object.values(this.profiles).filter(profile => 
+            profile.parentProfile === this.currentProfile || 
+            (currentProfile.parentProfile && profile.parentProfile === currentProfile.parentProfile)
+        );
+        
+        if (relatedProfiles.length > 0) {
+            // Show modal asking which profiles to compare in
+            this.showCrossProfileComparisonModal(newFilm, relatedProfiles);
+        }
+    }
+    
+    showCrossProfileComparisonModal(newFilm, relatedProfiles) {
+        // This would show a modal asking user which profiles to run comparisons in
+        // For now, we'll automatically compare in all related profiles
+        relatedProfiles.forEach(profile => {
+            // Store current state
+            const originalProfile = this.currentProfile;
+            
+            // Switch to related profile temporarily
+            this.switchToProfile(profile.id);
+            
+            // Queue comparisons for this profile if the film doesn't have comparison data here
+            if (!profile.comparisons[newFilm.id]) {
+                this.queueCrossProfileComparisons(newFilm);
+            }
+            
+            // Switch back to original profile
+            this.switchToProfile(originalProfile);
+        });
+    }
+    
+    queueCrossProfileComparisons(newFilm) {
+        // Queue comparisons for the new film in the current profile context
+        const existingFilms = this.films.filter(f => f.id !== newFilm.id);
+        
+        existingFilms.forEach(existingFilm => {
+            // Only add comparison if it doesn't exist for this profile
+            const profile = this.profiles[this.currentProfile];
+            if (!profile.comparisons[newFilm.id] || !profile.comparisons[newFilm.id].comparisons[existingFilm.id]) {
+                this.comparisonQueue.push({
+                    newFilm: newFilm,
+                    existingFilm: existingFilm,
+                    profileId: this.currentProfile
+                });
+            }
+        });
     }
 }
 

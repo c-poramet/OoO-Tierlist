@@ -45,6 +45,16 @@
                     </div>
                 </div>
                 
+                <div class="profile-section">
+                    <h3>Profile</h3>
+                    <div class="current-profile">
+                        <div class="profile-display">
+                            <span id="currentProfileName">My Rankings</span>
+                        </div>
+                        <button id="profileBtn" class="btn btn-secondary" title="Manage Profiles">👤 Manage Profiles</button>
+                    </div>
+                </div>
+                
                 <div class="controls">
                     <button id="addFilmBtn" class="btn btn-primary">Add New Item</button>
                     <button id="recheckBtn" class="btn btn-primary" title="Find and compare unmatched films">🔍 Recheck Comparisons</button>
@@ -175,6 +185,54 @@
             <div class="modal-footer">
                 <button id="cancelExportBtn" class="btn btn-secondary">Cancel</button>
                 <button id="confirmExportBtn" class="btn btn-primary">Export Image</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Management Modal -->
+    <div id="profileModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Manage Profiles</h2>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="profile-management">
+                    <div class="profile-form">
+                        <h3>Create New Profile</h3>
+                        <div class="form-group">
+                            <label for="profileName">Profile Name:</label>
+                            <input type="text" id="profileName" placeholder="Enter profile name">
+                        </div>
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="shareFilmsCheckbox">
+                                <span class="checkmark"></span>
+                                Share film catalog with existing profile
+                            </label>
+                            <div class="input-hint">If checked, this profile will use the same films but have separate rankings</div>
+                        </div>
+                        <div class="form-group" id="parentProfileContainer" style="display: none;">
+                            <label for="parentProfileSelect">Select profile to share films with:</label>
+                            <select id="parentProfileSelect" class="form-select">
+                                <option value="">Select profile...</option>
+                            </select>
+                        </div>
+                        <div class="form-actions">
+                            <button id="createProfileBtn" class="btn btn-primary">Create Profile</button>
+                        </div>
+                    </div>
+                    
+                    <div class="profile-list-section">
+                        <h3>Existing Profiles</h3>
+                        <div id="profileList" class="profile-list">
+                            <!-- Profile items will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelProfileBtn" class="btn btn-secondary">Close</button>
             </div>
         </div>
     </div>
