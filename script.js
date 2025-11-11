@@ -536,9 +536,29 @@ class FilmRankingApp {
         console.log('Restoring queue to:', queueSnapshot.map(c => `${c.newFilm.title} vs ${c.existingFilm.title}`));
         
         // Restore the film states
-        comparison.newFilm.comparisons = newFilmState.comparisons;
+        // Restore comparisons by clearing and reapplying to keep both sides consistent
+        const restoredNewComparisons = JSON.parse(JSON.stringify(newFilmState.comparisons || {}));
+        const restoredExistingComparisons = JSON.parse(JSON.stringify(existingFilmState.comparisons || {}));
+
+        // Clear current comparisons for both
+        comparison.newFilm.comparisons = {};
+        comparison.existingFilm.comparisons = {};
+
+        // Reapply restored comparisons
+        Object.keys(restoredNewComparisons).forEach(opId => {
+            const res = restoredNewComparisons[opId];
+            const other = this.films.find(f => f.id == opId);
+            if (other) this.setHeadToHead(comparison.newFilm, other, res === 'win' ? 'win' : 'loss');
+        });
+
+        Object.keys(restoredExistingComparisons).forEach(opId => {
+            const res = restoredExistingComparisons[opId];
+            const other = this.films.find(f => f.id == opId);
+            if (other) this.setHeadToHead(comparison.existingFilm, other, res === 'win' ? 'win' : 'loss');
+        });
+
+        // Recalculate wins from comparisons (recalculateAllRanks will be called later)
         comparison.newFilm.wins = newFilmState.wins;
-        comparison.existingFilm.comparisons = existingFilmState.comparisons;
         comparison.existingFilm.wins = existingFilmState.wins;
         
         // Restore the entire queue state and put the undone comparison back at front
@@ -603,11 +623,11 @@ class FilmRankingApp {
         const undoState = {
             comparison: comparison,
             newFilmState: {
-                comparisons: { ...newFilm.comparisons },
+                comparisons: JSON.parse(JSON.stringify(newFilm.comparisons || {})),
                 wins: newFilm.wins
             },
             existingFilmState: {
-                comparisons: { ...existingFilm.comparisons },
+                comparisons: JSON.parse(JSON.stringify(existingFilm.comparisons || {})),
                 wins: existingFilm.wins
             },
             choice: isBetter,
@@ -621,16 +641,11 @@ class FilmRankingApp {
         if (!newFilm.comparisons) newFilm.comparisons = {};
         if (!existingFilm.comparisons) existingFilm.comparisons = {};
         
+        // Use centralized setter to ensure consistency
         if (isBetter) {
-            // New film wins
-            newFilm.comparisons[existingFilm.id] = 'win';
-            existingFilm.comparisons[newFilm.id] = 'loss';
-            newFilm.wins++;
+            this.setHeadToHead(newFilm, existingFilm, 'win');
         } else {
-            // Existing film wins
-            newFilm.comparisons[existingFilm.id] = 'loss';
-            existingFilm.comparisons[newFilm.id] = 'win';
-            existingFilm.wins++;
+            this.setHeadToHead(newFilm, existingFilm, 'loss');
         }
 
         console.log('Comparison completed:', newFilm.title, isBetter ? 'wins' : 'loses', 'against', existingFilm.title);
@@ -751,6 +766,38 @@ class FilmRankingApp {
                 });
             }
         });
+    }
+
+    // Helper to set a head-to-head result between two films.
+    // result: 'win' means filmA beats filmB, 'loss' means filmA loses to filmB.
+    // This method ensures both sides of the comparison are updated consistently.
+    setHeadToHead(filmA, filmB, result) {
+        if (!filmA || !filmB) return;
+        if (!filmA.comparisons) filmA.comparisons = {};
+        if (!filmB.comparisons) filmB.comparisons = {};
+
+        if (result === 'win') {
+            filmA.comparisons[filmB.id] = 'win';
+            filmB.comparisons[filmA.id] = 'loss';
+        } else if (result === 'loss') {
+            filmA.comparisons[filmB.id] = 'loss';
+            filmB.comparisons[filmA.id] = 'win';
+        } else {
+            // Treat any other value as removal
+            delete filmA.comparisons[filmB.id];
+            delete filmB.comparisons[filmA.id];
+        }
+
+        // Keep wins/losses consistent by recalculating from comparisons
+        this.recalculateAllRanks();
+    }
+
+    // Helper to remove a head-to-head comparison between two films
+    removeHeadToHead(filmA, filmB) {
+        if (!filmA || !filmB) return;
+        if (filmA.comparisons && filmA.comparisons[filmB.id]) delete filmA.comparisons[filmB.id];
+        if (filmB.comparisons && filmB.comparisons[filmA.id]) delete filmB.comparisons[filmA.id];
+        this.recalculateAllRanks();
     }
 
     createFilmHTML(film, displayRank) {
@@ -1316,22 +1363,8 @@ class FilmRankingApp {
         if (!film || !opponent) return;
         
         if (confirm(`Remove the matchup between "${film.title}" and "${opponent.title}"?\n\nThis will delete their head-to-head record.`)) {
-            // Remove the comparison from both films
-            if (film.comparisons && film.comparisons[opponentId]) {
-                // Adjust win count if removing a win
-                if (film.comparisons[opponentId] === 'win' && film.wins > 0) {
-                    film.wins--;
-                }
-                delete film.comparisons[opponentId];
-            }
-            
-            if (opponent.comparisons && opponent.comparisons[filmId]) {
-                // Adjust win count if removing a win
-                if (opponent.comparisons[filmId] === 'win' && opponent.wins > 0) {
-                    opponent.wins--;
-                }
-                delete opponent.comparisons[filmId];
-            }
+            // Remove the head-to-head consistently
+            this.removeHeadToHead(film, opponent);
             
             // Recalculate rankings and ELO
             this.recalculateAllRanks();
@@ -1352,34 +1385,19 @@ class FilmRankingApp {
         if (!film.comparisons) film.comparisons = {};
         if (!opponent.comparisons) opponent.comparisons = {};
         
-        const currentResult = film.comparisons[opponentId];
-        
+        const currentResult = film.comparisons ? film.comparisons[opponentId] : undefined;
+
         if (currentResult === 'win') {
             // Flip from win to loss
-            film.comparisons[opponentId] = 'loss';
-            opponent.comparisons[filmId] = 'win';
-            
-            // Adjust win counts
-            if (film.wins > 0) film.wins--;
-            opponent.wins++;
-            
+            this.setHeadToHead(film, opponent, 'loss');
             this.showSuccessMessage(`Flipped result: "${opponent.title}" now beats "${film.title}"`);
         } else if (currentResult === 'loss') {
             // Flip from loss to win
-            film.comparisons[opponentId] = 'win';
-            opponent.comparisons[filmId] = 'loss';
-            
-            // Adjust win counts
-            film.wins++;
-            if (opponent.wins > 0) opponent.wins--;
-            
+            this.setHeadToHead(film, opponent, 'win');
             this.showSuccessMessage(`Flipped result: "${film.title}" now beats "${opponent.title}"`);
         } else {
             // No existing matchup, create a win for the current film
-            film.comparisons[opponentId] = 'win';
-            opponent.comparisons[filmId] = 'loss';
-            film.wins++;
-            
+            this.setHeadToHead(film, opponent, 'win');
             this.showSuccessMessage(`Created new matchup: "${film.title}" beats "${opponent.title}"`);
         }
         
@@ -1410,31 +1428,19 @@ class FilmRankingApp {
         if (!film.comparisons) film.comparisons = {};
         if (!opponent.comparisons) opponent.comparisons = {};
         
-        // Check if matchup already exists
+        // If matchup exists and user doesn't want to overwrite, bail
         if (film.comparisons[opponentId]) {
-            if (confirm(`A matchup between "${film.title}" and "${opponent.title}" already exists. Do you want to overwrite it?`)) {
-                // Remove the old result from win counts
-                if (film.comparisons[opponentId] === 'win' && film.wins > 0) {
-                    film.wins--;
-                }
-                if (opponent.comparisons[filmId] === 'win' && opponent.wins > 0) {
-                    opponent.wins--;
-                }
-            } else {
+            if (!confirm(`A matchup between "${film.title}" and "${opponent.title}" already exists. Do you want to overwrite it?`)) {
                 return;
             }
         }
-        
-        // Add the new matchup
+
+        // Use centralized setter
         if (result === 'win') {
-            film.comparisons[opponentId] = 'win';
-            opponent.comparisons[filmId] = 'loss';
-            film.wins++;
+            this.setHeadToHead(film, opponent, 'win');
             this.showSuccessMessage(`Added matchup: "${film.title}" beats "${opponent.title}"`);
         } else {
-            film.comparisons[opponentId] = 'loss';
-            opponent.comparisons[filmId] = 'win';
-            opponent.wins++;
+            this.setHeadToHead(film, opponent, 'loss');
             this.showSuccessMessage(`Added matchup: "${opponent.title}" beats "${film.title}"`);
         }
         
