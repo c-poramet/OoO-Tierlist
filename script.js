@@ -54,6 +54,12 @@ class FilmRankingApp {
         // Recheck comparisons button
         document.getElementById('recheckBtn').addEventListener('click', () => this.recheckComparisons());
         
+        // Validate all comparisons button (hidden by default, shown in dev mode)
+        const validateBtn = document.getElementById('validateBtn');
+        if (validateBtn) {
+            validateBtn.addEventListener('click', () => this.handleValidateAll());
+        }
+        
         // Recalculate ELO button
         document.getElementById('recalculateEloBtn').addEventListener('click', () => this.handleRecalculateElo());
         
@@ -798,6 +804,64 @@ class FilmRankingApp {
         if (filmA.comparisons && filmA.comparisons[filmB.id]) delete filmA.comparisons[filmB.id];
         if (filmB.comparisons && filmB.comparisons[filmA.id]) delete filmB.comparisons[filmA.id];
         this.recalculateAllRanks();
+    }
+
+    // Validate and fix all comparison reciprocity and consistency
+    validateAndFixComparisons() {
+        let fixedCount = 0;
+        let removedCount = 0;
+        
+        console.log('=== Starting Comparison Validation ===');
+        
+        // First pass: fix one-sided comparisons
+        this.films.forEach(filmA => {
+            if (!filmA.comparisons) {
+                filmA.comparisons = {};
+                return;
+            }
+            
+            Object.keys(filmA.comparisons).forEach(opponentId => {
+                const filmB = this.films.find(f => f.id == opponentId);
+                
+                if (!filmB) {
+                    // Opponent doesn't exist, remove this comparison
+                    console.log(`Removing orphaned comparison: ${filmA.title} vs non-existent film ${opponentId}`);
+                    delete filmA.comparisons[opponentId];
+                    removedCount++;
+                    return;
+                }
+                
+                if (!filmB.comparisons) filmB.comparisons = {};
+                
+                const aResult = filmA.comparisons[opponentId];
+                const bResult = filmB.comparisons[filmA.id];
+                
+                // Check reciprocity
+                if (!bResult) {
+                    // filmB is missing reciprocal entry
+                    const reciprocal = aResult === 'win' ? 'loss' : 'win';
+                    filmB.comparisons[filmA.id] = reciprocal;
+                    console.log(`Fixed missing reciprocal: ${filmB.title} now has ${reciprocal} vs ${filmA.title}`);
+                    fixedCount++;
+                } else if ((aResult === 'win' && bResult !== 'loss') || (aResult === 'loss' && bResult !== 'win')) {
+                    // Inconsistent results
+                    const reciprocal = aResult === 'win' ? 'loss' : 'win';
+                    console.log(`Fixed inconsistent comparison: ${filmA.title} has ${aResult} vs ${filmB.title}, changed ${filmB.title} from ${bResult} to ${reciprocal}`);
+                    filmB.comparisons[filmA.id] = reciprocal;
+                    fixedCount++;
+                }
+            });
+        });
+        
+        console.log(`=== Validation Complete: Fixed ${fixedCount}, Removed ${removedCount} ===`);
+        
+        // Recalculate everything after fixes
+        if (fixedCount > 0 || removedCount > 0) {
+            this.recalculateAllRanks();
+            this.recalculateEloRatings();
+        }
+        
+        return { fixedCount, removedCount };
     }
 
     createFilmHTML(film, displayRank) {
@@ -1564,50 +1628,123 @@ class FilmRankingApp {
         }
     }
 
+    handleValidateAll() {
+        if (this.films.length === 0) {
+            alert('No films to validate. Add some items first!');
+            return;
+        }
+
+        console.log('Running comprehensive validation...');
+        const result = this.validateAndFixComparisons();
+        
+        let message = '✅ Validation Complete!\n\n';
+        
+        if (result.fixedCount === 0 && result.removedCount === 0) {
+            message += 'No issues found. All comparisons are valid and reciprocal!';
+        } else {
+            if (result.fixedCount > 0) {
+                message += `Fixed ${result.fixedCount} broken or one-sided comparison${result.fixedCount > 1 ? 's' : ''}.\n`;
+            }
+            if (result.removedCount > 0) {
+                message += `Removed ${result.removedCount} orphaned comparison${result.removedCount > 1 ? 's' : ''}.\n`;
+            }
+            message += '\nData has been updated and saved.';
+        }
+        
+        alert(message);
+        this.saveData();
+        this.updateDisplay();
+    }
+
     recheckComparisons() {
         if (this.films.length < 2) {
             alert('You need at least 2 films to compare!');
             return;
         }
 
-        // Find all missing comparisons
+        // Find all missing AND broken comparisons
         const missingComparisons = [];
+        const brokenComparisons = [];
         
         for (let i = 0; i < this.films.length; i++) {
             for (let j = i + 1; j < this.films.length; j++) {
                 const filmA = this.films[i];
                 const filmB = this.films[j];
                 
-                // Check if these two films have been compared
-                const hasComparison = (filmA.comparisons && filmA.comparisons[filmB.id]) ||
-                                     (filmB.comparisons && filmB.comparisons[filmA.id]);
+                const aHasB = filmA.comparisons && filmA.comparisons[filmB.id];
+                const bHasA = filmB.comparisons && filmB.comparisons[filmA.id];
                 
-                if (!hasComparison) {
+                // Check if BOTH sides exist (reciprocal comparison)
+                if (!aHasB && !bHasA) {
+                    // Completely missing comparison
                     missingComparisons.push({ filmA, filmB });
+                } else if (!aHasB || !bHasA) {
+                    // One-sided comparison (broken reciprocity)
+                    brokenComparisons.push({ filmA, filmB, aHasB, bHasA });
+                } else {
+                    // Both exist - verify they are reciprocal (win vs loss)
+                    const aResult = filmA.comparisons[filmB.id];
+                    const bResult = filmB.comparisons[filmA.id];
+                    
+                    const isReciprocal = (aResult === 'win' && bResult === 'loss') || 
+                                        (aResult === 'loss' && bResult === 'win');
+                    
+                    if (!isReciprocal) {
+                        brokenComparisons.push({ 
+                            filmA, 
+                            filmB, 
+                            aHasB: true, 
+                            bHasA: true,
+                            aResult,
+                            bResult,
+                            inconsistent: true
+                        });
+                    }
                 }
             }
         }
 
-        if (missingComparisons.length === 0) {
-            alert('✅ All films have been compared!\n\nNo missing comparisons found.');
+        const totalIssues = missingComparisons.length + brokenComparisons.length;
+        
+        if (totalIssues === 0) {
+            alert('✅ All films have been compared!\n\nNo missing or broken comparisons found.');
             return;
         }
 
-        // Show confirmation with count
+        // Show detailed report
         const totalPairs = (this.films.length * (this.films.length - 1)) / 2;
-        const completedPairs = totalPairs - missingComparisons.length;
-        const message = `Found ${missingComparisons.length} missing comparison${missingComparisons.length > 1 ? 's' : ''}!\n\n` +
-                       `Progress: ${completedPairs}/${totalPairs} pairs compared (${Math.round(completedPairs/totalPairs*100)}%)\n\n` +
-                       `Do you want to compare them now?`;
+        const completedPairs = totalPairs - totalIssues;
+        
+        let message = `Found ${totalIssues} issue${totalIssues > 1 ? 's' : ''}:\n\n`;
+        
+        if (missingComparisons.length > 0) {
+            message += `❌ ${missingComparisons.length} missing comparison${missingComparisons.length > 1 ? 's' : ''}\n`;
+        }
+        
+        if (brokenComparisons.length > 0) {
+            message += `⚠️ ${brokenComparisons.length} broken/one-sided comparison${brokenComparisons.length > 1 ? 's' : ''}\n`;
+        }
+        
+        message += `\nProgress: ${completedPairs}/${totalPairs} pairs valid (${Math.round(completedPairs/totalPairs*100)}%)\n\n`;
+        message += `Do you want to fix these issues now?`;
         
         if (confirm(message)) {
-            // Queue up missing comparisons
-            this.comparisonQueue = missingComparisons.map(pair => ({
-                newFilm: pair.filmA,
-                existingFilm: pair.filmB
-            }));
+            // Queue up all issues for comparison
+            // For broken comparisons, we'll re-compare them to fix the reciprocity
+            const allIssues = [
+                ...missingComparisons.map(pair => ({
+                    newFilm: pair.filmA,
+                    existingFilm: pair.filmB
+                })),
+                ...brokenComparisons.map(pair => ({
+                    newFilm: pair.filmA,
+                    existingFilm: pair.filmB
+                }))
+            ];
             
-            console.log(`Queued ${this.comparisonQueue.length} missing comparisons`);
+            this.comparisonQueue = allIssues;
+            
+            console.log(`Queued ${this.comparisonQueue.length} comparisons to fix (${missingComparisons.length} missing + ${brokenComparisons.length} broken)`);
             this.comparisonHistory = []; // Clear undo history for this session
             this.processNextComparison();
         }
@@ -2655,6 +2792,10 @@ class FilmRankingApp {
                         overallRank: film.overallRank || 0
                     }));
 
+                    // Validate and fix any comparison inconsistencies after import
+                    console.log('Validating imported comparisons...');
+                    const validationResult = this.validateAndFixComparisons();
+                    
                     // Recalculate everything to ensure consistency
                     this.recalculateAllRanks();
                     this.recalculateEloRatings();
@@ -2662,7 +2803,16 @@ class FilmRankingApp {
                     this.saveData();
                     this.updateDisplay();
                     
-                    this.showSuccessMessage(`Successfully imported ${this.films.length} films! Previous data backed up.`);
+                    let message = `Successfully imported ${this.films.length} films!`;
+                    if (validationResult.fixedCount > 0 || validationResult.removedCount > 0) {
+                        message += `\n\nFixed ${validationResult.fixedCount} comparison inconsistencies.`;
+                        if (validationResult.removedCount > 0) {
+                            message += `\nRemoved ${validationResult.removedCount} orphaned comparisons.`;
+                        }
+                    }
+                    message += '\n\nPrevious data backed up.';
+                    
+                    this.showSuccessMessage(message);
                 }
             } catch (error) {
                 console.error('Import error:', error);
@@ -2697,6 +2847,10 @@ class FilmRankingApp {
                     if (film.eloRating === undefined) film.eloRating = 1200;
                     if (film.customThumbnail === undefined) film.customThumbnail = null;
                 });
+                
+                // Validate and fix any comparison inconsistencies
+                console.log('Validating comparisons on load...');
+                this.validateAndFixComparisons();
                 
                 // Recalculate everything to ensure consistency
                 this.recalculateAllRanks();
