@@ -1807,13 +1807,15 @@ body {
 .detail-edit-section {
     margin-top: 15px;
     margin-bottom: 10px;
+    display: flex;
+    justify-content: center;
 }
 
 .detail-edit-btn {
     width: 150px;
     padding: 8px 16px;
     font-size: 13px;
-    background: #667eea;
+    background: #6c757d;
     color: white;
     border: none;
     border-radius: 6px;
@@ -1827,8 +1829,8 @@ body {
 }
 
 .detail-edit-btn:hover {
-    background: #5568d3;
-    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    background: #5a6268;
+    box-shadow: 0 2px 8px rgba(108, 117, 125, 0.3);
 }
 
 .add-matchup-section {
