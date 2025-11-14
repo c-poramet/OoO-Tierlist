@@ -108,10 +108,12 @@ body {
     background: rgba(20,20,20,0.96);
     border-top: 1.5px solid #232323;
     margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .controls .btn {
-    margin-bottom: 12px;
     border-radius: 10px;
     font-weight: 600;
     text-transform: uppercase;
@@ -119,6 +121,15 @@ body {
     font-size: 13px;
     position: relative;
     overflow: hidden;
+}
+
+.controls .btn-primary {
+    margin-bottom: 20px;
+}
+
+.controls .dropdown-container,
+.controls .btn-secondary {
+    margin-bottom: 0;
 }
 
 .controls .btn::before {
@@ -146,7 +157,6 @@ body {
 .dropdown-container {
     position: relative;
     width: 100%;
-    margin-bottom: 12px;
 }
 
 .dropdown-toggle::after {
@@ -1168,106 +1178,30 @@ body {
     text-align: center;
 }
 
-/* ELO View Card Styles */
-.elo-card {
-    display: flex;
-    align-items: stretch;
-    gap: 0;
-    padding: 0;
-    margin: 8px 0;
-    background: white;
-    border-radius: 8px;
-    border: 1px solid #e9ecef;
-    transition: all 0.2s ease;
+.elo-item {
     position: relative;
     overflow: hidden;
-    cursor: pointer;
-    min-height: 120px;
 }
 
-.elo-card:hover {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    transform: translateX(3px);
-    background: #f8f9fa;
-}
-
-.elo-card-thumbnail {
-    position: absolute;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    width: 50%;
-    background-size: cover;
-    background-position: center;
-    opacity: 0.5;
-    border-radius: 0 8px 8px 0;
-    -webkit-mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.2) 10%, rgba(0,0,0,0.5) 25%, rgba(0,0,0,1) 50%);
-    mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.2) 10%, rgba(0,0,0,0.5) 25%, rgba(0,0,0,1) 50%);
-}
-
-.elo-card:hover .elo-card-thumbnail {
-    opacity: 0.35;
-}
-
-.elo-card-rank {
+.elo-item::before {
+    content: '';
     position: absolute;
     left: 0;
     top: 0;
     bottom: 0;
-    width: 60px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-    font-weight: 700;
-    z-index: 2;
-    border-right: 3px solid;
-    border-color: var(--elo-color, #007bff);
-    background: rgba(255,255,255,0.95);
+    width: 4px;
+    background: var(--elo-color, #007bff);
 }
 
-.elo-card-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 20px 20px 20px 75px;
+.elo-rank {
     position: relative;
-    z-index: 1;
-    justify-content: center;
 }
 
-.elo-card-title {
-    font-size: 1.1rem;
-    color: #333;
-    font-weight: 600;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.elo-card-stats {
-    display: flex;
-    gap: 20px;
-    align-items: center;
-    font-size: 0.95rem;
-}
-
-.elo-card-rating {
-    font-weight: 700;
-    padding: 4px 10px;
-    border-radius: 6px;
-    font-size: 1rem;
-}
-
-.elo-card-wins {
-    color: #6c757d;
-    font-weight: 600;
-}
-
-.elo-card-record {
-    color: #6c757d;
-    font-weight: 500;
+.elo-rating {
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9rem;
 }
 
 /* ELO Rating Classes */
@@ -1276,8 +1210,8 @@ body {
     --elo-color: #9c27b0;
 }
 
-.elo-master.elo-card-rating {
-    background: rgba(156, 39, 176, 0.15);
+.elo-master.elo-rating {
+    background: rgba(156, 39, 176, 0.1);
     color: #9c27b0 !important;
 }
 
@@ -1286,8 +1220,8 @@ body {
     --elo-color: #ff9800;
 }
 
-.elo-expert.elo-card-rating {
-    background: rgba(255, 152, 0, 0.15);
+.elo-expert.elo-rating {
+    background: rgba(255, 152, 0, 0.1);
     color: #ff9800 !important;
 }
 
@@ -1296,8 +1230,8 @@ body {
     --elo-color: #4caf50;
 }
 
-.elo-intermediate.elo-card-rating {
-    background: rgba(76, 175, 80, 0.15);
+.elo-intermediate.elo-rating {
+    background: rgba(76, 175, 80, 0.1);
     color: #4caf50 !important;
 }
 
@@ -1306,8 +1240,8 @@ body {
     --elo-color: #757575;
 }
 
-.elo-beginner.elo-card-rating {
-    background: rgba(117, 117, 117, 0.15);
+.elo-beginner.elo-rating {
+    background: rgba(117, 117, 117, 0.1);
     color: #757575 !important;
 }
 

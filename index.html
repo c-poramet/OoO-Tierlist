@@ -47,9 +47,17 @@
                 
                 <div class="controls">
                     <button id="addFilmBtn" class="btn btn-primary">Add New Item</button>
-                    <button id="recheckBtn" class="btn btn-primary" title="Find and compare unmatched films">🔍 Recheck Comparisons</button>
-                    <button id="validateBtn" class="btn btn-secondary" title="Validate and fix all comparison inconsistencies" style="display: none;">🔧 Validate All</button>
-                    <button id="recalculateEloBtn" class="btn btn-primary" title="Recalculate all ELO ratings">🔄 Recalculate ELO</button>
+                    
+                    <div class="dropdown-container">
+                        <button id="miscDropdownBtn" class="btn btn-secondary dropdown-toggle">⚙️ Misc</button>
+                        <div id="miscDropdownMenu" class="dropdown-menu">
+                            <button id="recheckBtn" class="dropdown-item">🔍 Recheck Comparisons</button>
+                            <button id="validateBtn" class="dropdown-item" style="display: none;">🔧 Validate All</button>
+                            <button id="recalculateEloBtn" class="dropdown-item">🔄 Recalculate ELO</button>
+                            <button id="createBackupBtn" class="dropdown-item">💾 Create Backup Now</button>
+                            <button id="viewBackupsBtn" class="dropdown-item">🗂️ View Auto Backups</button>
+                        </div>
+                    </div>
                     
                     <div class="dropdown-container">
                         <button id="exportDropdownBtn" class="btn btn-secondary dropdown-toggle">📤 Export</button>
@@ -68,7 +76,6 @@
 
             <main class="rankings">
                 <div id="rankingsContainer">
-                    <h2>OoO Rankings</h2>
                     <div id="filmsList" class="films-list">
                         <p class="empty-state">No items added yet. Click "Add New Item" to get started!</p>
                     </div>
@@ -176,6 +183,52 @@
             <div class="modal-footer">
                 <button id="cancelExportBtn" class="btn btn-secondary">Cancel</button>
                 <button id="confirmExportBtn" class="btn btn-primary">Export Image</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auto Backups Modal -->
+    <div id="backupsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Auto Backups</h2>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="backups-list" id="backupsList">
+                    <p class="empty-state">No auto backups available</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="closeBackupsBtn" class="btn btn-secondary">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Film Modal -->
+    <div id="editFilmModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Edit Film Details</h2>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="editFilmTitle">Film Title:</label>
+                    <input type="text" id="editFilmTitle" placeholder="Enter film title">
+                </div>
+                <div class="form-group">
+                    <label for="editVideoLink">Media Link:</label>
+                    <input type="url" id="editVideoLink" placeholder="https://youtube.com/watch?v=...">
+                </div>
+                <div class="form-group">
+                    <label for="editCustomImage">Custom Thumbnail URL:</label>
+                    <input type="url" id="editCustomImage" placeholder="https://example.com/image.jpg">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelEditBtn" class="btn btn-secondary">Cancel</button>
+                <button id="confirmEditBtn" class="btn btn-primary">Save Changes</button>
             </div>
         </div>
     </div>
