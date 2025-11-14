@@ -63,6 +63,12 @@ class FilmRankingApp {
         // Recalculate ELO button
         document.getElementById('recalculateEloBtn').addEventListener('click', () => this.handleRecalculateElo());
         
+        // Misc dropdown toggle
+        document.getElementById('miscDropdownBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleMiscDropdown();
+        });
+        
         // Export dropdown toggle
         document.getElementById('exportDropdownBtn').addEventListener('click', (e) => {
             e.stopPropagation();
@@ -122,6 +128,13 @@ class FilmRankingApp {
         window.addEventListener('click', (e) => {
             if (e.target.classList.contains('modal')) {
                 this.hideModals();
+            }
+            // Close misc dropdown if clicking outside
+            const miscDropdown = document.getElementById('miscDropdownMenu');
+            const miscDropdownBtn = document.getElementById('miscDropdownBtn');
+            if (miscDropdown && miscDropdown.classList.contains('show') && 
+                !miscDropdown.contains(e.target) && e.target !== miscDropdownBtn) {
+                this.hideMiscDropdown();
             }
             // Close export dropdown if clicking outside
             const dropdown = document.getElementById('exportDropdownMenu');
@@ -255,6 +268,16 @@ class FilmRankingApp {
         document.getElementById('comparisonModal').style.display = 'none';
         // Hide undo button when closing modals
         document.getElementById('undoComparisonBtn').style.display = 'none';
+    }
+
+    toggleMiscDropdown() {
+        const dropdown = document.getElementById('miscDropdownMenu');
+        dropdown.classList.toggle('show');
+    }
+
+    hideMiscDropdown() {
+        const dropdown = document.getElementById('miscDropdownMenu');
+        dropdown.classList.remove('show');
     }
 
     toggleExportDropdown() {
