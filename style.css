@@ -865,6 +865,9 @@ body {
 .backup-item .btn {
     margin: 0;
     white-space: nowrap;
+    width: auto;
+    padding: 8px 16px;
+    font-size: 13px;
 }
 
 /* Comparison Modal Styles */

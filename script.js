@@ -3056,10 +3056,22 @@ class FilmRankingApp {
             backupsList.innerHTML = backups.map((backup, index) => {
                 const date = new Date(backup.timestamp);
                 const filmCount = backup.data.films ? backup.data.films.length : 0;
+                
+                // Format: DD MMMM YYYY HH:MM:SS
+                const day = String(date.getDate()).padStart(2, '0');
+                const months = ['January', 'February', 'March', 'April', 'May', 'June', 
+                               'July', 'August', 'September', 'October', 'November', 'December'];
+                const month = months[date.getMonth()];
+                const year = date.getFullYear();
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                const seconds = String(date.getSeconds()).padStart(2, '0');
+                const formattedDate = `${day} ${month} ${year} ${hours}:${minutes}:${seconds}`;
+                
                 return `
                     <div class="backup-item">
                         <div class="backup-info">
-                            <div class="backup-date">${date.toLocaleString()}</div>
+                            <div class="backup-date">${formattedDate}</div>
                             <div class="backup-details">${filmCount} films</div>
                         </div>
                         <button class="btn btn-small btn-primary" onclick="app.downloadBackup(${index})">
