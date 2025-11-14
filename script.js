@@ -1399,7 +1399,8 @@ class FilmRankingApp {
             html += this.buildEloChain(strongestWin, depth + 1, maxDepth, visited);
         }
         
-        if (strongestLoss) {
+        // Only show "Strongest Defeat By" if we haven't shown a win (i.e., this is the end of the chain)
+        if (strongestLoss && !strongestWin) {
             const lossElo = Math.round(strongestLoss.eloRating || 1200);
             const lossClass = this.getEloRatingClass(lossElo);
             const lossThumbnail = strongestLoss.thumbnailUrl || '';
