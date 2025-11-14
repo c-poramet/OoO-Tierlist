@@ -6,8 +6,12 @@ class FilmRankingApp {
         this.comparisonHistory = []; // Track comparison history for undo
         this.currentView = 'list'; // 'list', 'tree', 'grid', 'elo', 'detail'
         this.currentDetailIndex = 0; // For detail view navigation
-        this.detailSectionsHidden = false; // Track if detail sections are collapsed
-        this.workflowSectionsHidden = false; // Track if workflow sections are collapsed
+        
+        // Load toggle states from localStorage, defaulting to hidden details and shown workflow
+        const savedDetailState = localStorage.getItem('detailSectionsHidden');
+        const savedWorkflowState = localStorage.getItem('workflowSectionsHidden');
+        this.detailSectionsHidden = savedDetailState !== null ? savedDetailState === 'true' : true;
+        this.workflowSectionsHidden = savedWorkflowState !== null ? savedWorkflowState === 'true' : false;
         
         this.loadData();
         this.setupEventListeners();
@@ -1262,6 +1266,19 @@ class FilmRankingApp {
                     </div>
                 </div>
 
+                <div class="workflow-toggle-section">
+                    <button id="workflowToggleBtn" class="btn btn-secondary detail-toggle-btn" onclick="app.toggleWorkflowSections()">
+                        <span id="workflowToggleIcon">${this.workflowSectionsHidden ? '▶' : '▼'}</span> ${this.workflowSectionsHidden ? 'Show' : 'Hide'} ELO Quality Chain
+                    </button>
+                </div>
+
+                <div id="workflowSections" class="workflow-sections" style="${this.workflowSectionsHidden ? 'display: none;' : ''}">
+                    <div class="elo-workflow-section">
+                        <div class="elo-workflow-description">Strongest opponents defeated/defeated by, recursively up to 7 levels</div>
+                        ${this.createEloWorkflowHTML(film)}
+                    </div>
+                </div>
+
                 <div class="detail-toggle-section">
                     <button id="detailToggleBtn" class="btn btn-secondary detail-toggle-btn" onclick="app.toggleDetailSections()">
                         <span id="toggleIcon">${this.detailSectionsHidden ? '▶' : '▼'}</span> ${this.detailSectionsHidden ? 'Show' : 'Hide'} Details
@@ -1292,19 +1309,6 @@ class FilmRankingApp {
                     <button class="btn btn-danger" onclick="app.deleteFilm(${film.id})">Delete Film</button>
                     ${film.link ? `<button class="btn btn-primary" onclick="window.open('${film.link}', '_blank')">Watch Film</button>` : ''}
                 </div>
-                </div>
-
-                <div class="workflow-toggle-section">
-                    <button id="workflowToggleBtn" class="btn btn-secondary detail-toggle-btn" onclick="app.toggleWorkflowSections()">
-                        <span id="workflowToggleIcon">${this.workflowSectionsHidden ? '▶' : '▼'}</span> ${this.workflowSectionsHidden ? 'Show' : 'Hide'} ELO Quality Chain
-                    </button>
-                </div>
-
-                <div id="workflowSections" class="workflow-sections" style="${this.workflowSectionsHidden ? 'display: none;' : ''}">
-                    <div class="elo-workflow-section">
-                        <div class="elo-workflow-description">Strongest opponents defeated/defeated by, recursively up to 7 levels</div>
-                        ${this.createEloWorkflowHTML(film)}
-                    </div>
                 </div>
             </div>
         `;
@@ -1491,6 +1495,9 @@ class FilmRankingApp {
         // Toggle the state
         this.detailSectionsHidden = !this.detailSectionsHidden;
         
+        // Save state to localStorage
+        localStorage.setItem('detailSectionsHidden', this.detailSectionsHidden);
+        
         if (this.detailSectionsHidden) {
             // Hide sections
             sectionsElement.style.display = 'none';
@@ -1508,6 +1515,9 @@ class FilmRankingApp {
         
         // Toggle the state
         this.workflowSectionsHidden = !this.workflowSectionsHidden;
+        
+        // Save state to localStorage
+        localStorage.setItem('workflowSectionsHidden', this.workflowSectionsHidden);
         
         if (this.workflowSectionsHidden) {
             // Hide sections

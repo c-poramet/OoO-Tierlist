@@ -1730,12 +1730,18 @@ body {
 }
 
 .workflow-toggle-section {
-    margin-top: 30px;
+    margin-top: 25px;
     margin-bottom: 10px;
 }
 
 .workflow-sections {
     margin-top: 15px;
+    margin-bottom: 20px;
+}
+
+.detail-toggle-section {
+    margin-top: 20px;
+    margin-bottom: 10px;
 }
 
 .add-matchup-section {
