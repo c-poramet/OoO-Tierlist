@@ -1044,7 +1044,7 @@ class FilmRankingApp {
             return (b.wins || 0) - (a.wins || 0);
         });
         
-        let html = '<h2>Film Rankings</h2>';
+        let html = '';
         
         // Check if there are any ties to show explanation
         const hasTies = sortedFilms.some(film => film.isTied);
@@ -1088,7 +1088,7 @@ class FilmRankingApp {
             return (b.wins || 0) - (a.wins || 0);
         });
         
-        let html = '<h2>🏆 Tournament Tree View</h2>';
+        let html = '';
         
         if (sortedFilms.length === 0) {
             html += '<p class="empty-state">No films added yet. Click "Add New Film" to get started!</p>';
@@ -1133,7 +1133,7 @@ class FilmRankingApp {
             return (b.wins || 0) - (a.wins || 0);
         });
         
-        let html = '<h2>📱 Grid View</h2>';
+        let html = '';
         
         if (sortedFilms.length === 0) {
             html += '<p class="empty-state">No films added yet. Click "Add New Film" to get started!</p>';
@@ -1172,8 +1172,7 @@ class FilmRankingApp {
         
         const sortedFilms = [...this.films].sort((a, b) => (b.eloRating || 1200) - (a.eloRating || 1200));
         
-        let html = '<h2>🧮 ELO Ratings</h2>';
-        html += '<p class="elo-explanation">📊 ELO ratings calculated from all pairwise comparisons (higher = better)</p>';
+        let html = '';
         
         if (sortedFilms.length === 0) {
             html += '<p class="empty-state">No films added yet. Click "Add New Film" to get started!</p>';
@@ -1228,7 +1227,7 @@ class FilmRankingApp {
         const currentFilm = sortedFilms[this.currentDetailIndex];
         const currentDisplayRank = this.calculateDisplayRank(currentFilm, sortedFilms);
         
-        let html = '<h2>🔍 Detail View</h2>';
+        let html = '';
         
         html += '<div class="detail-view">';
         
