@@ -1725,20 +1725,14 @@ body {
     order: 0;
 }
 
-.empty-matchups {.matchup-actions .btn-danger:hover {
-    background: #c82333;
+.empty-matchups {
+    text-align: center;
+    color: #6c757d;
+    font-style: italic;
+    padding: 20px;
 }
 
-.matchup-actions .btn-secondary {
-    background: #6c757d;
-    color: white;
-}
-
-.matchup-actions .btn-secondary:hover {
-    background: #5a6268;
-}
-
-.elo-workflow-section {
+/* ELO Workflow Section */.elo-workflow-section {
     background: #f0f4f8;
     border-radius: 10px;
     padding: 20px;
