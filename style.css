@@ -1628,28 +1628,28 @@ body {
     position: absolute;
     top: 0;
     bottom: 0;
-    width: 120px;
+    width: 30%;
     background-size: cover;
     background-position: center;
-    opacity: 0.3;
+    opacity: 0.5;
     border-radius: 8px 0 0 8px;
 }
 
 .win-card .matchup-card-thumbnail {
     left: 0;
-    -webkit-mask-image: linear-gradient(to left, transparent 0%, rgba(0,0,0,0.3) 20%, rgba(0,0,0,1) 40%);
-    mask-image: linear-gradient(to left, transparent 0%, rgba(0,0,0,0.3) 20%, rgba(0,0,0,1) 40%);
+    -webkit-mask-image: linear-gradient(to left, transparent 0%, rgba(0,0,0,0.2) 10%, rgba(0,0,0,0.5) 25%, rgba(0,0,0,1) 50%);
+    mask-image: linear-gradient(to left, transparent 0%, rgba(0,0,0,0.2) 10%, rgba(0,0,0,0.5) 25%, rgba(0,0,0,1) 50%);
 }
 
 .loss-card .matchup-card-thumbnail {
     right: 0;
     border-radius: 0 8px 8px 0;
-    -webkit-mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.3) 20%, rgba(0,0,0,1) 40%);
-    mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.3) 20%, rgba(0,0,0,1) 40%);
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.2) 10%, rgba(0,0,0,0.5) 25%, rgba(0,0,0,1) 50%);
+    mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.2) 10%, rgba(0,0,0,0.5) 25%, rgba(0,0,0,1) 50%);
 }
 
 .matchup-card:hover .matchup-card-thumbnail {
-    opacity: 0.2;
+    opacity: 0.35;
 }
 
 .matchup-card-content {
