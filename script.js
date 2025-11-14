@@ -83,6 +83,12 @@ class FilmRankingApp {
             this.handleRecalculateElo();
         });
         
+        // Create backup now button
+        document.getElementById('createBackupBtn').addEventListener('click', () => {
+            this.hideMiscDropdown();
+            this.manualBackup();
+        });
+        
         // View backups button
         document.getElementById('viewBackupsBtn').addEventListener('click', () => {
             this.hideMiscDropdown();
@@ -3010,6 +3016,33 @@ class FilmRankingApp {
             console.error('Error loading auto backups:', e);
             return [];
         }
+    }
+
+    manualBackup() {
+        const data = {
+            films: this.films
+        };
+        
+        const now = Date.now();
+        const backups = this.getAutoBackups();
+        
+        // Create new backup (ignoring time restriction for manual backups)
+        const backup = {
+            timestamp: now,
+            data: data
+        };
+        
+        backups.push(backup);
+        
+        // Keep only the latest 8 backups
+        if (backups.length > 8) {
+            backups.shift();
+        }
+        
+        // Save backups to localStorage
+        localStorage.setItem('autoBackups', JSON.stringify(backups));
+        
+        this.showSuccessMessage('Backup created successfully!');
     }
 
     showBackupsModal() {
