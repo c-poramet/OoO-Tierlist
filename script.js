@@ -1261,6 +1261,12 @@ class FilmRankingApp {
                     </div>
                 </div>
 
+                <div class="elo-workflow-section">
+                    <div class="matchups-title">ELO Quality Chain</div>
+                    <div class="elo-workflow-description">Strongest opponents defeated/defeated by, recursively up to 7 levels</div>
+                    ${this.createEloWorkflowHTML(film)}
+                </div>
+
                 <div class="detail-toggle-section">
                     <button id="detailToggleBtn" class="btn btn-secondary detail-toggle-btn" onclick="app.toggleDetailSections()">
                         <span id="toggleIcon">${this.detailSectionsHidden ? '▶' : '▼'}</span> ${this.detailSectionsHidden ? 'Show' : 'Hide'} Details
@@ -1284,12 +1290,6 @@ class FilmRankingApp {
                             ${losses.length > 0 ? this.createMatchupListHTML(losses, film.id, false) : '<div class="empty-matchups">Undefeated!</div>'}
                         </div>
                     </div>
-                </div>
-
-                <div class="elo-workflow-section">
-                    <div class="matchups-title">ELO Quality Chain</div>
-                    <div class="elo-workflow-description">Strongest opponents defeated/defeated by, recursively up to 7 levels</div>
-                    ${this.createEloWorkflowHTML(film)}
                 </div>
 
                 <div class="detail-actions">
@@ -1370,6 +1370,7 @@ class FilmRankingApp {
         if (strongestWin) {
             const winElo = Math.round(strongestWin.eloRating || 1200);
             const winClass = this.getEloRatingClass(winElo);
+            const winThumbnail = strongestWin.thumbnailUrl || '';
             html += `
                 <div class="elo-chain-item" style="margin-left: ${indent}px;">
                     <div class="elo-chain-icon win">✅</div>
@@ -1383,6 +1384,7 @@ class FilmRankingApp {
                             <span class="elo-chain-record">${strongestWin.wins || 0}-${this.getLossCount(strongestWin)}</span>
                         </div>
                     </div>
+                    ${winThumbnail ? `<div class="elo-chain-thumbnail" style="background-image: url(${winThumbnail});"></div>` : ''}
                 </div>
             `;
             // Recursively show this opponent's chain
@@ -1392,6 +1394,7 @@ class FilmRankingApp {
         if (strongestLoss) {
             const lossElo = Math.round(strongestLoss.eloRating || 1200);
             const lossClass = this.getEloRatingClass(lossElo);
+            const lossThumbnail = strongestLoss.thumbnailUrl || '';
             html += `
                 <div class="elo-chain-item" style="margin-left: ${indent}px;">
                     <div class="elo-chain-icon loss">❌</div>
@@ -1405,6 +1408,7 @@ class FilmRankingApp {
                             <span class="elo-chain-record">${strongestLoss.wins || 0}-${this.getLossCount(strongestLoss)}</span>
                         </div>
                     </div>
+                    ${lossThumbnail ? `<div class="elo-chain-thumbnail" style="background-image: url(${lossThumbnail});"></div>` : ''}
                 </div>
             `;
             // Recursively show this opponent's chain

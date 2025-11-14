@@ -1645,6 +1645,8 @@ body {
     border-radius: 8px;
     border: 1px solid #e9ecef;
     transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
 }
 
 .elo-chain-item:hover {
@@ -1708,6 +1710,22 @@ body {
 .elo-chain-record {
     color: #6c757d;
     font-weight: 500;
+}
+
+.elo-chain-thumbnail {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 80px;
+    background-size: cover;
+    background-position: center;
+    opacity: 0.15;
+    border-radius: 0 8px 8px 0;
+}
+
+.elo-chain-item:hover .elo-chain-thumbnail {
+    opacity: 0.25;
 }
 
 .add-matchup-section {
