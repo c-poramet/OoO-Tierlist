@@ -1654,14 +1654,18 @@ body {
     gap: 6px;
     position: relative;
     z-index: 1;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .win-card .matchup-card-content {
     padding-left: 110px;
+    padding-right: 50px;
 }
 
 .loss-card .matchup-card-content {
     padding-right: 110px;
+    padding-left: 50px;
 }
 
 .matchup-card-title {
