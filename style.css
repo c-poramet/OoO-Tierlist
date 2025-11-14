@@ -1719,7 +1719,7 @@ body {
     width: 120px;
     background-size: cover;
     background-position: center;
-    opacity: 0.3;
+    opacity: 0.65;
     border-radius: 0 8px 8px 0;
     -webkit-mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.3) 20%, rgba(0,0,0,1) 40%);
     mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.3) 20%, rgba(0,0,0,1) 40%);
