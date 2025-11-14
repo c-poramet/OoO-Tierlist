@@ -1569,6 +1569,8 @@ body {
     border-radius: 10px;
     padding: 20px;
     border: 1px solid #dee2e6;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .matchup-category.wins {
@@ -1600,6 +1602,8 @@ body {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    max-width: 100%;
+    overflow: hidden;
 }
 
 .matchup-card {
@@ -1613,6 +1617,7 @@ body {
     transition: all 0.2s ease;
     position: relative;
     overflow: hidden;
+    max-width: 100%;
 }
 
 .matchup-card:hover {
