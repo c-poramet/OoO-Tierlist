@@ -1405,11 +1405,13 @@ class FilmRankingApp {
     createMatchupListHTML(films, currentFilmId, isWins) {
         return `
             <div class="matchup-cards">
-                ${films.map(film => `
+                ${films.map(film => {
+                    const displayTitle = film.title.length > 50 ? film.title.substring(0, 47) + '...' : film.title;
+                    return `
                     <div class="matchup-card ${isWins ? 'win-card' : 'loss-card'}">
                         ${film.thumbnailUrl ? `<div class="matchup-card-thumbnail" style="background-image: url(${film.thumbnailUrl});"></div>` : ''}
                         <div class="matchup-card-content">
-                            <div class="matchup-card-title">${film.title}</div>
+                            <div class="matchup-card-title" title="${film.title}">${displayTitle}</div>
                             <div class="matchup-card-stats">
                                 <span class="matchup-elo">${Math.round(film.eloRating || 1200)} ELO</span>
                                 <span class="matchup-record">${film.wins || 0}W - ${film.losses || 0}L</span>
@@ -1417,7 +1419,8 @@ class FilmRankingApp {
                         </div>
                         <button class="matchup-swap-btn ${isWins ? 'swap-right' : 'swap-left'}" onclick="app.flipMatchup(${currentFilmId}, ${film.id})" title="Flip result">⇅</button>
                     </div>
-                `).join('')}
+                `;
+                }).join('')}
             </div>
         `;
     }

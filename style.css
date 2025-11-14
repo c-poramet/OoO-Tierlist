@@ -1668,6 +1668,9 @@ body {
     font-size: 0.95rem;
     color: #333;
     font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .matchup-card-stats {
