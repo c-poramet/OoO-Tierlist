@@ -56,17 +56,38 @@ class FilmRankingApp {
         // Auto-fill button
         document.getElementById('autoFillBtn').addEventListener('click', () => this.autoFillTitle());
         
+        // Misc dropdown toggle
+        document.getElementById('miscDropdownBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleMiscDropdown();
+        });
+        
         // Recheck comparisons button
-        document.getElementById('recheckBtn').addEventListener('click', () => this.recheckComparisons());
+        document.getElementById('recheckBtn').addEventListener('click', () => {
+            this.hideMiscDropdown();
+            this.recheckComparisons();
+        });
         
         // Validate all comparisons button (hidden by default, shown in dev mode)
         const validateBtn = document.getElementById('validateBtn');
         if (validateBtn) {
-            validateBtn.addEventListener('click', () => this.handleValidateAll());
+            validateBtn.addEventListener('click', () => {
+                this.hideMiscDropdown();
+                this.handleValidateAll();
+            });
         }
         
         // Recalculate ELO button
-        document.getElementById('recalculateEloBtn').addEventListener('click', () => this.handleRecalculateElo());
+        document.getElementById('recalculateEloBtn').addEventListener('click', () => {
+            this.hideMiscDropdown();
+            this.handleRecalculateElo();
+        });
+        
+        // View backups button
+        document.getElementById('viewBackupsBtn').addEventListener('click', () => {
+            this.hideMiscDropdown();
+            this.showBackupsModal();
+        });
         
         // Export dropdown toggle
         document.getElementById('exportDropdownBtn').addEventListener('click', (e) => {
@@ -129,12 +150,25 @@ class FilmRankingApp {
                 this.hideModals();
             }
             // Close export dropdown if clicking outside
-            const dropdown = document.getElementById('exportDropdownMenu');
-            const dropdownBtn = document.getElementById('exportDropdownBtn');
-            if (dropdown && dropdown.classList.contains('show') && 
-                !dropdown.contains(e.target) && e.target !== dropdownBtn) {
+            const exportDropdown = document.getElementById('exportDropdownMenu');
+            const exportDropdownBtn = document.getElementById('exportDropdownBtn');
+            if (exportDropdown && exportDropdown.classList.contains('show') && 
+                !exportDropdown.contains(e.target) && e.target !== exportDropdownBtn) {
                 this.hideExportDropdown();
             }
+            // Close misc dropdown if clicking outside
+            const miscDropdown = document.getElementById('miscDropdownMenu');
+            const miscDropdownBtn = document.getElementById('miscDropdownBtn');
+            if (miscDropdown && miscDropdown.classList.contains('show') && 
+                !miscDropdown.contains(e.target) && e.target !== miscDropdownBtn) {
+                this.hideMiscDropdown();
+            }
+        });
+        
+        // Backups modal close button
+        const closeButtons = document.querySelectorAll('#backupsModal .close, #closeBackupsBtn');
+        closeButtons.forEach(btn => {
+            btn.addEventListener('click', () => this.hideBackupsModal());
         });
         
         // Keyboard shortcuts for comparison modal and detail view
@@ -269,6 +303,16 @@ class FilmRankingApp {
 
     hideExportDropdown() {
         const dropdown = document.getElementById('exportDropdownMenu');
+        dropdown.classList.remove('show');
+    }
+
+    toggleMiscDropdown() {
+        const dropdown = document.getElementById('miscDropdownMenu');
+        dropdown.classList.toggle('show');
+    }
+
+    hideMiscDropdown() {
+        const dropdown = document.getElementById('miscDropdownMenu');
         dropdown.classList.remove('show');
     }
 
@@ -2921,6 +2965,110 @@ class FilmRankingApp {
             films: this.films
         };
         localStorage.setItem('filmRankings', JSON.stringify(data));
+        
+        // Auto backup
+        this.createAutoBackup(data);
+    }
+
+    createAutoBackup(data) {
+        const now = Date.now();
+        const backups = this.getAutoBackups();
+        
+        // Check if last backup was less than 30 minutes ago
+        if (backups.length > 0) {
+            const lastBackup = backups[backups.length - 1];
+            const timeDiff = now - lastBackup.timestamp;
+            const thirtyMinutes = 30 * 60 * 1000;
+            
+            if (timeDiff < thirtyMinutes) {
+                return; // Don't create a new backup yet
+            }
+        }
+        
+        // Create new backup
+        const backup = {
+            timestamp: now,
+            data: data
+        };
+        
+        backups.push(backup);
+        
+        // Keep only the latest 8 backups
+        if (backups.length > 8) {
+            backups.shift();
+        }
+        
+        // Save backups to localStorage
+        localStorage.setItem('autoBackups', JSON.stringify(backups));
+    }
+
+    getAutoBackups() {
+        try {
+            const saved = localStorage.getItem('autoBackups');
+            return saved ? JSON.parse(saved) : [];
+        } catch (e) {
+            console.error('Error loading auto backups:', e);
+            return [];
+        }
+    }
+
+    showBackupsModal() {
+        const modal = document.getElementById('backupsModal');
+        const backupsList = document.getElementById('backupsList');
+        const backups = this.getAutoBackups();
+        
+        if (backups.length === 0) {
+            backupsList.innerHTML = '<p class="empty-state">No auto backups available</p>';
+        } else {
+            backupsList.innerHTML = backups.map((backup, index) => {
+                const date = new Date(backup.timestamp);
+                const filmCount = backup.data.films ? backup.data.films.length : 0;
+                return `
+                    <div class="backup-item">
+                        <div class="backup-info">
+                            <div class="backup-date">${date.toLocaleString()}</div>
+                            <div class="backup-details">${filmCount} films</div>
+                        </div>
+                        <button class="btn btn-small btn-primary" onclick="app.downloadBackup(${index})">
+                            💾 Download
+                        </button>
+                    </div>
+                `;
+            }).reverse().join('');
+        }
+        
+        modal.style.display = 'block';
+    }
+
+    hideBackupsModal() {
+        const modal = document.getElementById('backupsModal');
+        modal.style.display = 'none';
+    }
+
+    downloadBackup(index) {
+        const backups = this.getAutoBackups();
+        const backup = backups[index];
+        
+        if (!backup) {
+            alert('Backup not found');
+            return;
+        }
+        
+        const date = new Date(backup.timestamp);
+        const dateStr = date.toISOString().split('T')[0];
+        const timeStr = date.toTimeString().split(' ')[0].replace(/:/g, '-');
+        const filename = `film-rankings-backup-${dateStr}-${timeStr}.json`;
+        
+        const dataStr = JSON.stringify(backup.data, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(dataBlob);
+        
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        link.click();
+        
+        URL.revokeObjectURL(url);
     }
 
     loadData() {
