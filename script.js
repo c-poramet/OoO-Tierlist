@@ -1286,6 +1286,12 @@ class FilmRankingApp {
                     </div>
                 </div>
 
+                <div class="elo-workflow-section">
+                    <div class="matchups-title">ELO Quality Chain</div>
+                    <div class="elo-workflow-description">Strongest opponents defeated/defeated by, recursively up to 7 levels</div>
+                    ${this.createEloWorkflowHTML(film)}
+                </div>
+
                 <div class="detail-actions">
                     <button class="btn btn-secondary" onclick="app.editFilm(${film.id})">Edit Film</button>
                     <button class="btn btn-danger" onclick="app.deleteFilm(${film.id})">Delete Film</button>
@@ -1336,6 +1342,103 @@ class FilmRankingApp {
                 `).join('')}
             </ul>
         `;
+    }
+
+    createEloWorkflowHTML(film) {
+        const visited = new Set();
+        return this.buildEloChain(film, 0, 7, visited);
+    }
+
+    buildEloChain(film, depth, maxDepth, visited) {
+        if (depth >= maxDepth || visited.has(film.id)) {
+            return '';
+        }
+        
+        visited.add(film.id);
+        
+        // Get strongest win and strongest loss
+        const strongestWin = this.getStrongestOpponent(film, 'win');
+        const strongestLoss = this.getStrongestOpponent(film, 'loss');
+        
+        if (!strongestWin && !strongestLoss) {
+            return depth === 0 ? '<div class="elo-workflow-empty">No matchups to display</div>' : '';
+        }
+        
+        const indent = depth * 30; // pixels
+        let html = '';
+        
+        if (strongestWin) {
+            const winElo = Math.round(strongestWin.eloRating || 1200);
+            const winClass = this.getEloRatingClass(winElo);
+            html += `
+                <div class="elo-chain-item" style="margin-left: ${indent}px;">
+                    <div class="elo-chain-icon win">✅</div>
+                    <div class="elo-chain-content">
+                        <div class="elo-chain-header">
+                            <span class="elo-chain-label">Strongest Defeat:</span>
+                            <span class="elo-chain-title">${strongestWin.title}</span>
+                        </div>
+                        <div class="elo-chain-stats">
+                            <span class="elo-rating ${winClass}">${winElo} ELO</span>
+                            <span class="elo-chain-record">${strongestWin.wins || 0}-${this.getLossCount(strongestWin)}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            // Recursively show this opponent's chain
+            html += this.buildEloChain(strongestWin, depth + 1, maxDepth, visited);
+        }
+        
+        if (strongestLoss) {
+            const lossElo = Math.round(strongestLoss.eloRating || 1200);
+            const lossClass = this.getEloRatingClass(lossElo);
+            html += `
+                <div class="elo-chain-item" style="margin-left: ${indent}px;">
+                    <div class="elo-chain-icon loss">❌</div>
+                    <div class="elo-chain-content">
+                        <div class="elo-chain-header">
+                            <span class="elo-chain-label">Strongest Defeat By:</span>
+                            <span class="elo-chain-title">${strongestLoss.title}</span>
+                        </div>
+                        <div class="elo-chain-stats">
+                            <span class="elo-rating ${lossClass}">${lossElo} ELO</span>
+                            <span class="elo-chain-record">${strongestLoss.wins || 0}-${this.getLossCount(strongestLoss)}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            // Recursively show this opponent's chain
+            html += this.buildEloChain(strongestLoss, depth + 1, maxDepth, visited);
+        }
+        
+        return html;
+    }
+
+    getStrongestOpponent(film, resultType) {
+        if (!film.comparisons) return null;
+        
+        let strongest = null;
+        let highestElo = -Infinity;
+        
+        Object.keys(film.comparisons).forEach(opponentId => {
+            if (film.comparisons[opponentId] === resultType) {
+                const opponent = this.films.find(f => f.id == opponentId);
+                if (opponent) {
+                    const opponentElo = opponent.eloRating || 1200;
+                    if (opponentElo > highestElo) {
+                        highestElo = opponentElo;
+                        strongest = opponent;
+                    }
+                }
+            }
+        });
+        
+        return strongest;
+    }
+
+    getLossCount(film) {
+        if (!film.comparisons) return 0;
+        return Object.values(film.comparisons).filter(result => result === 'loss').length;
     }
 
     calculateWinRate(film) {

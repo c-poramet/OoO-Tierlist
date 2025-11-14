@@ -1611,6 +1611,105 @@ body {
     background: #5a6268;
 }
 
+.elo-workflow-section {
+    background: #f0f4f8;
+    border-radius: 10px;
+    padding: 20px;
+    margin-top: 25px;
+    border: 1px solid #d1dce5;
+    border-left: 4px solid #6f42c1;
+}
+
+.elo-workflow-description {
+    font-size: 0.85rem;
+    color: #6c757d;
+    text-align: center;
+    margin-bottom: 20px;
+    font-style: italic;
+}
+
+.elo-workflow-empty {
+    text-align: center;
+    color: #6c757d;
+    padding: 20px;
+    font-style: italic;
+}
+
+.elo-chain-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px;
+    margin: 8px 0;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+    transition: all 0.2s ease;
+}
+
+.elo-chain-item:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transform: translateX(3px);
+}
+
+.elo-chain-icon {
+    font-size: 1.2rem;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.elo-chain-icon.win {
+    background: #d4edda;
+}
+
+.elo-chain-icon.loss {
+    background: #f8d7da;
+}
+
+.elo-chain-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.elo-chain-header {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.elo-chain-label {
+    font-size: 0.75rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.elo-chain-title {
+    font-size: 0.95rem;
+    color: #333;
+    font-weight: 600;
+}
+
+.elo-chain-stats {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    font-size: 0.85rem;
+}
+
+.elo-chain-record {
+    color: #6c757d;
+    font-weight: 500;
+}
+
 .add-matchup-section {
     background: #e9ecef;
     border-radius: 10px;
