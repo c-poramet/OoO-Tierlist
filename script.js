@@ -177,6 +177,14 @@ class FilmRankingApp {
             btn.addEventListener('click', () => this.hideBackupsModal());
         });
         
+        // Edit film modal controls
+        const editCloseButtons = document.querySelectorAll('#editFilmModal .close');
+        editCloseButtons.forEach(btn => {
+            btn.addEventListener('click', () => this.hideEditFilmModal());
+        });
+        document.getElementById('cancelEditBtn').addEventListener('click', () => this.hideEditFilmModal());
+        document.getElementById('confirmEditBtn').addEventListener('click', () => this.saveEditedFilm());
+        
         // Keyboard shortcuts for comparison modal and detail view
         window.addEventListener('keydown', (e) => {
             if (document.getElementById('comparisonModal').style.display === 'block') {
@@ -1332,6 +1340,12 @@ class FilmRankingApp {
                 <div class="detail-toggle-section">
                     <button id="detailToggleBtn" class="btn btn-secondary detail-toggle-btn" onclick="app.toggleDetailSections()">
                         <span id="toggleIcon">${this.detailSectionsHidden ? '▶' : '▼'}</span> ${this.detailSectionsHidden ? 'Show' : 'Hide'} Details
+                    </button>
+                </div>
+
+                <div class="detail-edit-section">
+                    <button class="btn btn-secondary detail-edit-btn" onclick="app.showEditFilmModal(${film.id})">
+                        ✏️ Edit Details
                     </button>
                 </div>
 
@@ -3088,6 +3102,68 @@ class FilmRankingApp {
     hideBackupsModal() {
         const modal = document.getElementById('backupsModal');
         modal.style.display = 'none';
+    }
+
+    showEditFilmModal(filmId) {
+        const film = this.films.find(f => f.id === filmId);
+        if (!film) return;
+        
+        // Store the film ID being edited
+        this.editingFilmId = filmId;
+        
+        // Populate the form
+        document.getElementById('editFilmTitle').value = film.title || '';
+        document.getElementById('editVideoLink').value = film.link || '';
+        document.getElementById('editCustomImage').value = film.customThumbnail || '';
+        
+        // Show the modal
+        const modal = document.getElementById('editFilmModal');
+        modal.style.display = 'block';
+    }
+
+    hideEditFilmModal() {
+        const modal = document.getElementById('editFilmModal');
+        modal.style.display = 'none';
+        this.editingFilmId = null;
+    }
+
+    saveEditedFilm() {
+        if (!this.editingFilmId) return;
+        
+        const film = this.films.find(f => f.id === this.editingFilmId);
+        if (!film) return;
+        
+        // Get the new values
+        const newTitle = document.getElementById('editFilmTitle').value.trim();
+        const newLink = document.getElementById('editVideoLink').value.trim();
+        const newCustomImage = document.getElementById('editCustomImage').value.trim();
+        
+        if (!newTitle) {
+            alert('Film title cannot be empty');
+            return;
+        }
+        
+        // Update the film
+        film.title = newTitle;
+        film.link = newLink || null;
+        film.customThumbnail = newCustomImage || null;
+        
+        // Update thumbnail URL if custom image changed
+        if (newCustomImage) {
+            film.thumbnailUrl = newCustomImage;
+        } else if (newLink) {
+            // Extract YouTube thumbnail if link is provided
+            const videoId = this.extractVideoId(newLink);
+            if (videoId) {
+                film.thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+            }
+        }
+        
+        // Save and update display
+        this.saveData();
+        this.updateDisplay();
+        this.hideEditFilmModal();
+        this.showSuccessMessage('Film details updated successfully!');
     }
 
     downloadBackup(index) {

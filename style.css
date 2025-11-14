@@ -1804,6 +1804,33 @@ body {
     margin-bottom: 10px;
 }
 
+.detail-edit-section {
+    margin-top: 15px;
+    margin-bottom: 10px;
+}
+
+.detail-edit-btn {
+    width: 150px;
+    padding: 8px 16px;
+    font-size: 13px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.detail-edit-btn:hover {
+    background: #5568d3;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
 .add-matchup-section {
     background: #e9ecef;
     border-radius: 10px;

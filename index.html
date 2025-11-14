@@ -206,6 +206,34 @@
         </div>
     </div>
 
+    <!-- Edit Film Modal -->
+    <div id="editFilmModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Edit Film Details</h2>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="editFilmTitle">Film Title:</label>
+                    <input type="text" id="editFilmTitle" placeholder="Enter film title">
+                </div>
+                <div class="form-group">
+                    <label for="editVideoLink">Media Link:</label>
+                    <input type="url" id="editVideoLink" placeholder="https://youtube.com/watch?v=...">
+                </div>
+                <div class="form-group">
+                    <label for="editCustomImage">Custom Thumbnail URL:</label>
+                    <input type="url" id="editCustomImage" placeholder="https://example.com/image.jpg">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelEditBtn" class="btn btn-secondary">Cancel</button>
+                <button id="confirmEditBtn" class="btn btn-primary">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>
