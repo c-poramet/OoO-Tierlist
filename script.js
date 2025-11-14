@@ -6,7 +6,12 @@ class FilmRankingApp {
         this.comparisonHistory = []; // Track comparison history for undo
         this.currentView = 'list'; // 'list', 'tree', 'grid', 'elo', 'detail'
         this.currentDetailIndex = 0; // For detail view navigation
-        this.detailSectionsHidden = false; // Track if detail sections are collapsed
+        
+        // Load toggle states from localStorage, defaulting to hidden details and shown workflow
+        const savedDetailState = localStorage.getItem('detailSectionsHidden');
+        const savedWorkflowState = localStorage.getItem('workflowSectionsHidden');
+        this.detailSectionsHidden = savedDetailState !== null ? savedDetailState === 'true' : true;
+        this.workflowSectionsHidden = savedWorkflowState !== null ? savedWorkflowState === 'true' : false;
         
         this.loadData();
         this.setupEventListeners();
@@ -51,17 +56,44 @@ class FilmRankingApp {
         // Auto-fill button
         document.getElementById('autoFillBtn').addEventListener('click', () => this.autoFillTitle());
         
+        // Misc dropdown toggle
+        document.getElementById('miscDropdownBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleMiscDropdown();
+        });
+        
         // Recheck comparisons button
-        document.getElementById('recheckBtn').addEventListener('click', () => this.recheckComparisons());
+        document.getElementById('recheckBtn').addEventListener('click', () => {
+            this.hideMiscDropdown();
+            this.recheckComparisons();
+        });
         
         // Validate all comparisons button (hidden by default, shown in dev mode)
         const validateBtn = document.getElementById('validateBtn');
         if (validateBtn) {
-            validateBtn.addEventListener('click', () => this.handleValidateAll());
+            validateBtn.addEventListener('click', () => {
+                this.hideMiscDropdown();
+                this.handleValidateAll();
+            });
         }
         
         // Recalculate ELO button
-        document.getElementById('recalculateEloBtn').addEventListener('click', () => this.handleRecalculateElo());
+        document.getElementById('recalculateEloBtn').addEventListener('click', () => {
+            this.hideMiscDropdown();
+            this.handleRecalculateElo();
+        });
+        
+        // Create backup now button
+        document.getElementById('createBackupBtn').addEventListener('click', () => {
+            this.hideMiscDropdown();
+            this.manualBackup();
+        });
+        
+        // View backups button
+        document.getElementById('viewBackupsBtn').addEventListener('click', () => {
+            this.hideMiscDropdown();
+            this.showBackupsModal();
+        });
         
         // Export dropdown toggle
         document.getElementById('exportDropdownBtn').addEventListener('click', (e) => {
@@ -124,13 +156,34 @@ class FilmRankingApp {
                 this.hideModals();
             }
             // Close export dropdown if clicking outside
-            const dropdown = document.getElementById('exportDropdownMenu');
-            const dropdownBtn = document.getElementById('exportDropdownBtn');
-            if (dropdown && dropdown.classList.contains('show') && 
-                !dropdown.contains(e.target) && e.target !== dropdownBtn) {
+            const exportDropdown = document.getElementById('exportDropdownMenu');
+            const exportDropdownBtn = document.getElementById('exportDropdownBtn');
+            if (exportDropdown && exportDropdown.classList.contains('show') && 
+                !exportDropdown.contains(e.target) && e.target !== exportDropdownBtn) {
                 this.hideExportDropdown();
             }
+            // Close misc dropdown if clicking outside
+            const miscDropdown = document.getElementById('miscDropdownMenu');
+            const miscDropdownBtn = document.getElementById('miscDropdownBtn');
+            if (miscDropdown && miscDropdown.classList.contains('show') && 
+                !miscDropdown.contains(e.target) && e.target !== miscDropdownBtn) {
+                this.hideMiscDropdown();
+            }
         });
+        
+        // Backups modal close button
+        const closeButtons = document.querySelectorAll('#backupsModal .close, #closeBackupsBtn');
+        closeButtons.forEach(btn => {
+            btn.addEventListener('click', () => this.hideBackupsModal());
+        });
+        
+        // Edit film modal controls
+        const editCloseButtons = document.querySelectorAll('#editFilmModal .close');
+        editCloseButtons.forEach(btn => {
+            btn.addEventListener('click', () => this.hideEditFilmModal());
+        });
+        document.getElementById('cancelEditBtn').addEventListener('click', () => this.hideEditFilmModal());
+        document.getElementById('confirmEditBtn').addEventListener('click', () => this.saveEditedFilm());
         
         // Keyboard shortcuts for comparison modal and detail view
         window.addEventListener('keydown', (e) => {
@@ -264,6 +317,16 @@ class FilmRankingApp {
 
     hideExportDropdown() {
         const dropdown = document.getElementById('exportDropdownMenu');
+        dropdown.classList.remove('show');
+    }
+
+    toggleMiscDropdown() {
+        const dropdown = document.getElementById('miscDropdownMenu');
+        dropdown.classList.toggle('show');
+    }
+
+    hideMiscDropdown() {
+        const dropdown = document.getElementById('miscDropdownMenu');
         dropdown.classList.remove('show');
     }
 
@@ -981,7 +1044,7 @@ class FilmRankingApp {
             return (b.wins || 0) - (a.wins || 0);
         });
         
-        let html = '<h2>Film Rankings</h2>';
+        let html = '';
         
         // Check if there are any ties to show explanation
         const hasTies = sortedFilms.some(film => film.isTied);
@@ -1025,7 +1088,7 @@ class FilmRankingApp {
             return (b.wins || 0) - (a.wins || 0);
         });
         
-        let html = '<h2>🏆 Tournament Tree View</h2>';
+        let html = '';
         
         if (sortedFilms.length === 0) {
             html += '<p class="empty-state">No films added yet. Click "Add New Film" to get started!</p>';
@@ -1070,7 +1133,7 @@ class FilmRankingApp {
             return (b.wins || 0) - (a.wins || 0);
         });
         
-        let html = '<h2>📱 Grid View</h2>';
+        let html = '';
         
         if (sortedFilms.length === 0) {
             html += '<p class="empty-state">No films added yet. Click "Add New Film" to get started!</p>';
@@ -1109,8 +1172,7 @@ class FilmRankingApp {
         
         const sortedFilms = [...this.films].sort((a, b) => (b.eloRating || 1200) - (a.eloRating || 1200));
         
-        let html = '<h2>🧮 ELO Ratings</h2>';
-        html += '<p class="elo-explanation">📊 ELO ratings calculated from all pairwise comparisons (higher = better)</p>';
+        let html = '';
         
         if (sortedFilms.length === 0) {
             html += '<p class="empty-state">No films added yet. Click "Add New Film" to get started!</p>';
@@ -1165,7 +1227,7 @@ class FilmRankingApp {
         const currentFilm = sortedFilms[this.currentDetailIndex];
         const currentDisplayRank = this.calculateDisplayRank(currentFilm, sortedFilms);
         
-        let html = '<h2>🔍 Detail View</h2>';
+        let html = '';
         
         html += '<div class="detail-view">';
         
@@ -1261,6 +1323,19 @@ class FilmRankingApp {
                     </div>
                 </div>
 
+                <div class="workflow-toggle-section">
+                    <button id="workflowToggleBtn" class="btn btn-secondary detail-toggle-btn" onclick="app.toggleWorkflowSections()">
+                        <span id="workflowToggleIcon">${this.workflowSectionsHidden ? '▶' : '▼'}</span> ${this.workflowSectionsHidden ? 'Show' : 'Hide'} ELO Quality Chain
+                    </button>
+                </div>
+
+                <div id="workflowSections" class="workflow-sections" style="${this.workflowSectionsHidden ? 'display: none;' : ''}">
+                    <div class="elo-workflow-section">
+                        <div class="elo-workflow-description">Strongest opponents defeated/defeated by, recursively up to 7 levels</div>
+                        ${this.createEloWorkflowHTML(film)}
+                    </div>
+                </div>
+
                 <div class="detail-toggle-section">
                     <button id="detailToggleBtn" class="btn btn-secondary detail-toggle-btn" onclick="app.toggleDetailSections()">
                         <span id="toggleIcon">${this.detailSectionsHidden ? '▶' : '▼'}</span> ${this.detailSectionsHidden ? 'Show' : 'Hide'} Details
@@ -1285,32 +1360,12 @@ class FilmRankingApp {
                         </div>
                     </div>
                 </div>
-
-                <div class="add-matchup-section">
-                    <div class="matchups-title">Add New Matchup</div>
-                    <div class="add-matchup-controls">
-                        <select id="newMatchupOpponent-${film.id}" class="matchup-select">
-                            <option value="">Select a film to compare with...</option>
-                            ${this.getAvailableOpponents(film).map(opponent => 
-                                `<option value="${opponent.id}">${opponent.title}</option>`
-                            ).join('')}
-                        </select>
-                        <div class="matchup-result-buttons">
-                            <button class="btn btn-success btn-small" onclick="app.addMatchup(${film.id}, document.getElementById('newMatchupOpponent-${film.id}').value, 'win')" title="${film.title} wins">
-                                ${film.title} Wins
-                            </button>
-                            <button class="btn btn-danger btn-small" onclick="app.addMatchup(${film.id}, document.getElementById('newMatchupOpponent-${film.id}').value, 'loss')" title="${film.title} loses">
-                                ${film.title} Loses
-                            </button>
-                        </div>
-                    </div>
                 </div>
 
-                <div class="detail-actions">
-                    <button class="btn btn-secondary" onclick="app.editFilm(${film.id})">Edit Film</button>
-                    <button class="btn btn-danger" onclick="app.deleteFilm(${film.id})">Delete Film</button>
-                    ${film.link ? `<button class="btn btn-primary" onclick="window.open('${film.link}', '_blank')">Watch Film</button>` : ''}
-                </div>
+                <div class="detail-edit-section">
+                    <button class="btn btn-secondary detail-edit-btn" onclick="app.showEditFilmModal(${film.id})">
+                        ✏️ Edit Details
+                    </button>
                 </div>
             </div>
         `;
@@ -1343,19 +1398,127 @@ class FilmRankingApp {
 
     createMatchupListHTML(films, currentFilmId, isWins) {
         return `
-            <ul class="matchup-list">
-                ${films.map(film => `
-                    <li class="matchup-item">
-                        <div class="matchup-thumbnail" style="${film.thumbnailUrl ? `background-image: url(${film.thumbnailUrl}); background-size: cover; background-position: center;` : 'background: #dee2e6;'}"></div>
-                        <div class="matchup-name">${film.title}</div>
-                        <div class="matchup-actions">
-                            <button class="btn-small btn-danger" onclick="app.removeMatchup(${currentFilmId}, ${film.id})" title="Remove this matchup">✕</button>
-                            <button class="btn-small btn-secondary" onclick="app.flipMatchup(${currentFilmId}, ${film.id})" title="Flip result (${isWins ? 'make this a loss' : 'make this a win'})">${isWins ? '⇅' : '⇅'}</button>
+            <div class="matchup-cards">
+                ${films.map(film => {
+                    const displayTitle = film.title.length > 50 ? film.title.substring(0, 47) + '...' : film.title;
+                    return `
+                    <div class="matchup-card ${isWins ? 'win-card' : 'loss-card'}">
+                        ${film.thumbnailUrl ? `<div class="matchup-card-thumbnail" style="background-image: url(${film.thumbnailUrl});"></div>` : ''}
+                        <div class="matchup-card-content">
+                            <div class="matchup-card-title" title="${film.title}">${displayTitle}</div>
+                            <div class="matchup-card-stats">
+                                <span class="matchup-elo">${Math.round(film.eloRating || 1200)} ELO</span>
+                                <span class="matchup-record">${film.wins || 0}W - ${film.losses || 0}L</span>
+                            </div>
                         </div>
-                    </li>
-                `).join('')}
-            </ul>
+                        <button class="matchup-swap-btn ${isWins ? 'swap-right' : 'swap-left'}" onclick="app.flipMatchup(${currentFilmId}, ${film.id})" title="Flip result">⇅</button>
+                    </div>
+                `;
+                }).join('')}
+            </div>
         `;
+    }
+
+    createEloWorkflowHTML(film) {
+        const visited = new Set();
+        return this.buildEloChain(film, 0, 7, visited);
+    }
+
+    buildEloChain(film, depth, maxDepth, visited) {
+        if (depth >= maxDepth || visited.has(film.id)) {
+            return '';
+        }
+        
+        visited.add(film.id);
+        
+        // Get strongest win and strongest loss
+        const strongestWin = this.getStrongestOpponent(film, 'win');
+        const strongestLoss = this.getStrongestOpponent(film, 'loss');
+        
+        if (!strongestWin && !strongestLoss) {
+            return depth === 0 ? '<div class="elo-workflow-empty">No matchups to display</div>' : '';
+        }
+        
+        const indent = depth * 30; // pixels
+        let html = '';
+        
+        if (strongestWin) {
+            const winElo = Math.round(strongestWin.eloRating || 1200);
+            const winClass = this.getEloRatingClass(winElo);
+            const winThumbnail = strongestWin.thumbnailUrl || '';
+            html += `
+                <div class="elo-chain-item clickable-chain-item" style="margin-left: ${indent}px;" onclick="app.jumpToFilmDetail(${strongestWin.id})" title="Click to view ${strongestWin.title}">
+                    <div class="elo-chain-icon win">✅</div>
+                    <div class="elo-chain-content">
+                        <div class="elo-chain-header">
+                            <span class="elo-chain-label">Strongest Defeat:</span>
+                            <span class="elo-chain-title">${strongestWin.title}</span>
+                        </div>
+                        <div class="elo-chain-stats">
+                            <span class="elo-rating ${winClass}">${winElo} ELO</span>
+                            <span class="elo-chain-record">${strongestWin.wins || 0}-${this.getLossCount(strongestWin)}</span>
+                        </div>
+                    </div>
+                    ${winThumbnail ? `<div class="elo-chain-thumbnail" style="background-image: url(${winThumbnail});"></div>` : ''}
+                </div>
+            `;
+            // Recursively show this opponent's chain
+            html += this.buildEloChain(strongestWin, depth + 1, maxDepth, visited);
+        }
+        
+        // Only show "Strongest Defeat By" if we haven't shown a win (i.e., this is the end of the chain)
+        if (strongestLoss && !strongestWin) {
+            const lossElo = Math.round(strongestLoss.eloRating || 1200);
+            const lossClass = this.getEloRatingClass(lossElo);
+            const lossThumbnail = strongestLoss.thumbnailUrl || '';
+            html += `
+                <div class="elo-chain-item clickable-chain-item" style="margin-left: ${indent}px;" onclick="app.jumpToFilmDetail(${strongestLoss.id})" title="Click to view ${strongestLoss.title}">
+                    <div class="elo-chain-icon loss">❌</div>
+                    <div class="elo-chain-content">
+                        <div class="elo-chain-header">
+                            <span class="elo-chain-label">Strongest Defeat By:</span>
+                            <span class="elo-chain-title">${strongestLoss.title}</span>
+                        </div>
+                        <div class="elo-chain-stats">
+                            <span class="elo-rating ${lossClass}">${lossElo} ELO</span>
+                            <span class="elo-chain-record">${strongestLoss.wins || 0}-${this.getLossCount(strongestLoss)}</span>
+                        </div>
+                    </div>
+                    ${lossThumbnail ? `<div class="elo-chain-thumbnail" style="background-image: url(${lossThumbnail});"></div>` : ''}
+                </div>
+            `;
+            // Recursively show this opponent's chain
+            html += this.buildEloChain(strongestLoss, depth + 1, maxDepth, visited);
+        }
+        
+        return html;
+    }
+
+    getStrongestOpponent(film, resultType) {
+        if (!film.comparisons) return null;
+        
+        let strongest = null;
+        let highestElo = -Infinity;
+        
+        Object.keys(film.comparisons).forEach(opponentId => {
+            if (film.comparisons[opponentId] === resultType) {
+                const opponent = this.films.find(f => f.id == opponentId);
+                if (opponent) {
+                    const opponentElo = opponent.eloRating || 1200;
+                    if (opponentElo > highestElo) {
+                        highestElo = opponentElo;
+                        strongest = opponent;
+                    }
+                }
+            }
+        });
+        
+        return strongest;
+    }
+
+    getLossCount(film) {
+        if (!film.comparisons) return 0;
+        return Object.values(film.comparisons).filter(result => result === 'loss').length;
     }
 
     calculateWinRate(film) {
@@ -1395,6 +1558,9 @@ class FilmRankingApp {
         // Toggle the state
         this.detailSectionsHidden = !this.detailSectionsHidden;
         
+        // Save state to localStorage
+        localStorage.setItem('detailSectionsHidden', this.detailSectionsHidden);
+        
         if (this.detailSectionsHidden) {
             // Hide sections
             sectionsElement.style.display = 'none';
@@ -1403,6 +1569,27 @@ class FilmRankingApp {
             // Show sections
             sectionsElement.style.display = 'block';
             toggleBtn.innerHTML = '<span id="toggleIcon">▼</span> Hide Details';
+        }
+    }
+
+    toggleWorkflowSections() {
+        const sectionsElement = document.getElementById('workflowSections');
+        const toggleBtn = document.getElementById('workflowToggleBtn');
+        
+        // Toggle the state
+        this.workflowSectionsHidden = !this.workflowSectionsHidden;
+        
+        // Save state to localStorage
+        localStorage.setItem('workflowSectionsHidden', this.workflowSectionsHidden);
+        
+        if (this.workflowSectionsHidden) {
+            // Hide sections
+            sectionsElement.style.display = 'none';
+            toggleBtn.innerHTML = '<span id="workflowToggleIcon">▶</span> Show ELO Quality Chain';
+        } else {
+            // Show sections
+            sectionsElement.style.display = 'block';
+            toggleBtn.innerHTML = '<span id="workflowToggleIcon">▼</span> Hide ELO Quality Chain';
         }
     }
 
@@ -1491,67 +1678,6 @@ class FilmRankingApp {
         // If we were in detail view, restore the position to the same film
         if (wasInDetailView && currentFilmId) {
             // Sort films same way as detail view to find new index
-            const sortedFilms = [...this.films].sort((a, b) => (b.eloRating || b.elo || 1200) - (a.eloRating || a.elo || 1200));
-            const newIndex = sortedFilms.findIndex(f => f.id === currentFilmId);
-            if (newIndex !== -1) {
-                this.currentDetailIndex = newIndex;
-            }
-        }
-        
-        this.updateDisplay();
-    }
-
-    getAvailableOpponents(currentFilm) {
-        // Return all films except the current one
-        return this.films.filter(film => film.id !== currentFilm.id);
-    }
-
-    addMatchup(filmId, opponentId, result) {
-        if (!opponentId) {
-            alert('Please select a film to compare with.');
-            return;
-        }
-        
-        const film = this.films.find(f => f.id === filmId);
-        const opponent = this.films.find(f => f.id === parseInt(opponentId));
-        
-        if (!film || !opponent) return;
-        
-        // Ensure both films have comparison objects
-        if (!film.comparisons) film.comparisons = {};
-        if (!opponent.comparisons) opponent.comparisons = {};
-        
-        // If matchup exists and user doesn't want to overwrite, bail
-        if (film.comparisons[opponentId]) {
-            if (!confirm(`A matchup between "${film.title}" and "${opponent.title}" already exists. Do you want to overwrite it?`)) {
-                return;
-            }
-        }
-
-        // Save the current film ID if in detail view to restore position later
-        const wasInDetailView = this.currentView === 'detail';
-        const currentFilmId = wasInDetailView ? filmId : null;
-        
-        // Use centralized setter
-        if (result === 'win') {
-            this.setHeadToHead(film, opponent, 'win');
-            this.showSuccessMessage(`Added matchup: "${film.title}" beats "${opponent.title}"`);
-        } else {
-            this.setHeadToHead(film, opponent, 'loss');
-            this.showSuccessMessage(`Added matchup: "${opponent.title}" beats "${film.title}"`);
-        }
-        
-        // Clear the selection
-        const select = document.getElementById(`newMatchupOpponent-${filmId}`);
-        if (select) select.value = '';
-        
-        // Recalculate rankings and ELO
-        this.recalculateAllRanks();
-        this.recalculateEloRatings();
-        this.saveData();
-        
-        // If we were in detail view, restore the position to the same film
-        if (wasInDetailView && currentFilmId) {
             const sortedFilms = [...this.films].sort((a, b) => (b.eloRating || b.elo || 1200) - (a.eloRating || a.elo || 1200));
             const newIndex = sortedFilms.findIndex(f => f.id === currentFilmId);
             if (newIndex !== -1) {
@@ -2858,6 +2984,211 @@ class FilmRankingApp {
             films: this.films
         };
         localStorage.setItem('filmRankings', JSON.stringify(data));
+        
+        // Auto backup
+        this.createAutoBackup(data);
+    }
+
+    createAutoBackup(data) {
+        const now = Date.now();
+        const backups = this.getAutoBackups();
+        
+        // Check if last backup was less than 30 minutes ago
+        if (backups.length > 0) {
+            const lastBackup = backups[backups.length - 1];
+            const timeDiff = now - lastBackup.timestamp;
+            const thirtyMinutes = 30 * 60 * 1000;
+            
+            if (timeDiff < thirtyMinutes) {
+                return; // Don't create a new backup yet
+            }
+        }
+        
+        // Create new backup
+        const backup = {
+            timestamp: now,
+            data: data
+        };
+        
+        backups.push(backup);
+        
+        // Keep only the latest 8 backups
+        if (backups.length > 8) {
+            backups.shift();
+        }
+        
+        // Save backups to localStorage
+        localStorage.setItem('autoBackups', JSON.stringify(backups));
+    }
+
+    getAutoBackups() {
+        try {
+            const saved = localStorage.getItem('autoBackups');
+            return saved ? JSON.parse(saved) : [];
+        } catch (e) {
+            console.error('Error loading auto backups:', e);
+            return [];
+        }
+    }
+
+    manualBackup() {
+        const data = {
+            films: this.films
+        };
+        
+        const now = Date.now();
+        const backups = this.getAutoBackups();
+        
+        // Create new backup (ignoring time restriction for manual backups)
+        const backup = {
+            timestamp: now,
+            data: data
+        };
+        
+        backups.push(backup);
+        
+        // Keep only the latest 8 backups
+        if (backups.length > 8) {
+            backups.shift();
+        }
+        
+        // Save backups to localStorage
+        localStorage.setItem('autoBackups', JSON.stringify(backups));
+        
+        this.showSuccessMessage('Backup created successfully!');
+    }
+
+    showBackupsModal() {
+        const modal = document.getElementById('backupsModal');
+        const backupsList = document.getElementById('backupsList');
+        const backups = this.getAutoBackups();
+        
+        if (backups.length === 0) {
+            backupsList.innerHTML = '<p class="empty-state">No auto backups available</p>';
+        } else {
+            backupsList.innerHTML = backups.map((backup, index) => {
+                const date = new Date(backup.timestamp);
+                const filmCount = backup.data.films ? backup.data.films.length : 0;
+                
+                // Format: DD MMMM YYYY HH:MM:SS
+                const day = String(date.getDate()).padStart(2, '0');
+                const months = ['January', 'February', 'March', 'April', 'May', 'June', 
+                               'July', 'August', 'September', 'October', 'November', 'December'];
+                const month = months[date.getMonth()];
+                const year = date.getFullYear();
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                const seconds = String(date.getSeconds()).padStart(2, '0');
+                const formattedDate = `${day} ${month} ${year} ${hours}:${minutes}:${seconds}`;
+                
+                return `
+                    <div class="backup-item">
+                        <div class="backup-info">
+                            <div class="backup-date">${formattedDate}</div>
+                            <div class="backup-details">${filmCount} films</div>
+                        </div>
+                        <button class="btn btn-small btn-primary" onclick="app.downloadBackup(${index})">
+                            💾 Download
+                        </button>
+                    </div>
+                `;
+            }).reverse().join('');
+        }
+        
+        modal.style.display = 'block';
+    }
+
+    hideBackupsModal() {
+        const modal = document.getElementById('backupsModal');
+        modal.style.display = 'none';
+    }
+
+    showEditFilmModal(filmId) {
+        const film = this.films.find(f => f.id === filmId);
+        if (!film) return;
+        
+        // Store the film ID being edited
+        this.editingFilmId = filmId;
+        
+        // Populate the form
+        document.getElementById('editFilmTitle').value = film.title || '';
+        document.getElementById('editVideoLink').value = film.link || '';
+        document.getElementById('editCustomImage').value = film.customThumbnail || '';
+        
+        // Show the modal
+        const modal = document.getElementById('editFilmModal');
+        modal.style.display = 'block';
+    }
+
+    hideEditFilmModal() {
+        const modal = document.getElementById('editFilmModal');
+        modal.style.display = 'none';
+        this.editingFilmId = null;
+    }
+
+    saveEditedFilm() {
+        if (!this.editingFilmId) return;
+        
+        const film = this.films.find(f => f.id === this.editingFilmId);
+        if (!film) return;
+        
+        // Get the new values
+        const newTitle = document.getElementById('editFilmTitle').value.trim();
+        const newLink = document.getElementById('editVideoLink').value.trim();
+        const newCustomImage = document.getElementById('editCustomImage').value.trim();
+        
+        if (!newTitle) {
+            alert('Film title cannot be empty');
+            return;
+        }
+        
+        // Update the film
+        film.title = newTitle;
+        film.link = newLink || null;
+        film.customThumbnail = newCustomImage || null;
+        
+        // Update thumbnail URL if custom image changed
+        if (newCustomImage) {
+            film.thumbnailUrl = newCustomImage;
+        } else if (newLink) {
+            // Extract YouTube thumbnail if link is provided
+            const videoId = this.extractVideoId(newLink);
+            if (videoId) {
+                film.thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+            }
+        }
+        
+        // Save and update display
+        this.saveData();
+        this.updateDisplay();
+        this.hideEditFilmModal();
+        this.showSuccessMessage('Film details updated successfully!');
+    }
+
+    downloadBackup(index) {
+        const backups = this.getAutoBackups();
+        const backup = backups[index];
+        
+        if (!backup) {
+            alert('Backup not found');
+            return;
+        }
+        
+        const date = new Date(backup.timestamp);
+        const dateStr = date.toISOString().split('T')[0];
+        const timeStr = date.toTimeString().split(' ')[0].replace(/:/g, '-');
+        const filename = `film-rankings-backup-${dateStr}-${timeStr}.json`;
+        
+        const dataStr = JSON.stringify(backup.data, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(dataBlob);
+        
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        link.click();
+        
+        URL.revokeObjectURL(url);
     }
 
     loadData() {

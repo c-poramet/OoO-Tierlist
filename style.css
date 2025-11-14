@@ -108,10 +108,12 @@ body {
     background: rgba(20,20,20,0.96);
     border-top: 1.5px solid #232323;
     margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .controls .btn {
-    margin-bottom: 12px;
     border-radius: 10px;
     font-weight: 600;
     text-transform: uppercase;
@@ -119,6 +121,15 @@ body {
     font-size: 13px;
     position: relative;
     overflow: hidden;
+}
+
+.controls .btn-primary {
+    margin-bottom: 20px;
+}
+
+.controls .dropdown-container,
+.controls .btn-secondary {
+    margin-bottom: 0;
 }
 
 .controls .btn::before {
@@ -146,7 +157,6 @@ body {
 .dropdown-container {
     position: relative;
     width: 100%;
-    margin-bottom: 12px;
 }
 
 .dropdown-toggle::after {
@@ -822,6 +832,52 @@ body {
 .modal-footer .btn {
     margin: 0;
     padding: 12px 25px;
+}
+
+/* Backups Modal Styles */
+.backups-list {
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.backup-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px;
+    border: 1px solid #505050;
+    border-radius: 8px;
+    background: #2a2a2a;
+    margin-bottom: 10px;
+    transition: all 0.2s ease;
+}
+
+.backup-item:hover {
+    background: #333;
+    border-color: #007bff;
+}
+
+.backup-info {
+    flex: 1;
+}
+
+.backup-date {
+    font-weight: 600;
+    color: #e0e0e0;
+    margin-bottom: 5px;
+}
+
+.backup-details {
+    font-size: 12px;
+    color: #888;
+}
+
+.backup-item .btn {
+    margin: 0;
+    white-space: nowrap;
+    width: auto;
+    padding: 8px 16px;
+    font-size: 13px;
 }
 
 /* Comparison Modal Styles */
@@ -1513,6 +1569,8 @@ body {
     border-radius: 10px;
     padding: 20px;
     border: 1px solid #dee2e6;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .matchup-category.wins {
@@ -1540,75 +1598,322 @@ body {
     color: #dc3545;
 }
 
-.matchup-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
+.matchup-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: 100%;
+    overflow: hidden;
 }
 
-.matchup-item {
+.matchup-card {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 8px 0;
-    border-bottom: 1px solid #e9ecef;
+    gap: 0;
+    padding: 12px;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+    max-width: 100%;
 }
 
-.matchup-item:last-child {
-    border-bottom: none;
+.matchup-card:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
-.matchup-thumbnail {
-    width: 40px;
-    height: 30px;
-    background: #dee2e6;
-    border-radius: 4px;
+.matchup-card-thumbnail {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 30%;
     background-size: cover;
     background-position: center;
+    opacity: 0.5;
+    border-radius: 8px 0 0 8px;
+}
+
+.win-card .matchup-card-thumbnail {
+    left: 0;
+    -webkit-mask-image: linear-gradient(to left, transparent 0%, rgba(0,0,0,0.2) 10%, rgba(0,0,0,0.5) 25%, rgba(0,0,0,1) 50%);
+    mask-image: linear-gradient(to left, transparent 0%, rgba(0,0,0,0.2) 10%, rgba(0,0,0,0.5) 25%, rgba(0,0,0,1) 50%);
+}
+
+.loss-card .matchup-card-thumbnail {
+    right: 0;
+    border-radius: 0 8px 8px 0;
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.2) 10%, rgba(0,0,0,0.5) 25%, rgba(0,0,0,1) 50%);
+    mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.2) 10%, rgba(0,0,0,0.5) 25%, rgba(0,0,0,1) 50%);
+}
+
+.matchup-card:hover .matchup-card-thumbnail {
+    opacity: 0.35;
+}
+
+.matchup-card-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    position: relative;
+    z-index: 1;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.win-card .matchup-card-content {
+    padding-left: 110px;
+    padding-right: 50px;
+}
+
+.loss-card .matchup-card-content {
+    padding-right: 110px;
+    padding-left: 50px;
+}
+
+.matchup-card-title {
+    font-size: 0.95rem;
+    color: #333;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.matchup-card-stats {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    font-size: 0.85rem;
+}
+
+.matchup-elo {
+    color: #667eea;
+    font-weight: 600;
+}
+
+.matchup-record {
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.matchup-swap-btn {
+    position: relative;
+    z-index: 1;
+    background: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.2s ease;
     flex-shrink: 0;
 }
 
-.matchup-name {
-    font-size: 0.9rem;
-    color: #333;
-    font-weight: 500;
-    flex: 1;
+.matchup-swap-btn:hover {
+    background: #5a6268;
 }
 
-.matchup-actions {
+.win-card .matchup-swap-btn {
+    order: 2;
+}
+
+.loss-card .matchup-swap-btn {
+    order: 0;
+}
+
+.win-card .matchup-card-content {
+    order: 1;
+}
+
+.loss-card .matchup-card-content {
+    order: 1;
+}
+
+.empty-matchups {
+    text-align: center;
+    color: #6c757d;
+    font-style: italic;
+    padding: 20px;
+}
+
+/* ELO Workflow Section */.elo-workflow-section {
+    background: #f0f4f8;
+    border-radius: 10px;
+    padding: 20px;
+    border: 1px solid #d1dce5;
+    border-left: 4px solid #6f42c1;
+}
+
+.elo-workflow-description {
+    font-size: 0.85rem;
+    color: #6c757d;
+    text-align: center;
+    margin-bottom: 20px;
+    font-style: italic;
+}
+
+.elo-workflow-empty {
+    text-align: center;
+    color: #6c757d;
+    padding: 20px;
+    font-style: italic;
+}
+
+.elo-chain-item {
     display: flex;
-    gap: 5px;
-    align-items: center;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px;
+    margin: 8px 0;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
 }
 
-.matchup-actions .btn-small {
-    padding: 4px 8px;
-    font-size: 11px;
-    border-radius: 4px;
-    margin: 0;
-    min-width: 24px;
-    height: 24px;
+.elo-chain-item:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transform: translateX(3px);
+}
+
+.clickable-chain-item {
+    cursor: pointer;
+}
+
+.clickable-chain-item:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transform: translateX(5px);
+    background: #f8f9fa;
+}
+
+.clickable-chain-item:active {
+    transform: translateX(3px);
+}
+
+.elo-chain-icon {
+    font-size: 1.2rem;
+    width: 30px;
+    height: 30px;
     display: flex;
     align-items: center;
     justify-content: center;
+    border-radius: 50%;
+    flex-shrink: 0;
 }
 
-.matchup-actions .btn-danger {
-    background: #dc3545;
-    color: white;
+.elo-chain-icon.win {
+    background: #d4edda;
 }
 
-.matchup-actions .btn-danger:hover {
-    background: #c82333;
+.elo-chain-icon.loss {
+    background: #f8d7da;
 }
 
-.matchup-actions .btn-secondary {
+.elo-chain-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.elo-chain-header {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.elo-chain-label {
+    font-size: 0.75rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.elo-chain-title {
+    font-size: 0.95rem;
+    color: #333;
+    font-weight: 600;
+}
+
+.elo-chain-stats {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    font-size: 0.85rem;
+}
+
+.elo-chain-record {
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.elo-chain-thumbnail {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 120px;
+    background-size: cover;
+    background-position: center;
+    opacity: 0.65;
+    border-radius: 0 8px 8px 0;
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.3) 20%, rgba(0,0,0,1) 40%);
+    mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.3) 20%, rgba(0,0,0,1) 40%);
+}
+
+.elo-chain-item:hover .elo-chain-thumbnail {
+    opacity: 0.45;
+}
+
+.workflow-toggle-section {
+    margin-top: 25px;
+    margin-bottom: 10px;
+}
+
+.workflow-sections {
+    margin-top: 15px;
+    margin-bottom: 20px;
+}
+
+.detail-toggle-section {
+    margin-top: 20px;
+    margin-bottom: 10px;
+}
+
+.detail-edit-section {
+    margin-top: 15px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: center;
+}
+
+.detail-edit-btn {
+    width: 150px;
+    padding: 8px 16px;
+    font-size: 13px;
     background: #6c757d;
     color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
 }
 
-.matchup-actions .btn-secondary:hover {
+.detail-edit-btn:hover {
     background: #5a6268;
+    box-shadow: 0 2px 8px rgba(108, 117, 125, 0.3);
 }
 
 .add-matchup-section {
