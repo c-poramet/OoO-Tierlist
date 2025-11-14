@@ -1559,53 +1559,37 @@ class FilmRankingApp {
             });
         });
 
-        // Iterate multiple times until ratings converge
-        // This ensures that path-dependency doesn't affect final ratings
-        // Each film's rating should reflect their true win percentage against the field
-        const maxIterations = 100; // Increased iterations for better convergence
-        const convergenceThreshold = 0.01; // Stricter convergence (was 0.1)
+        // Use a limited iteration approach with diminishing K-factor
+        // but keep deterministic order for consistent results
+        const maxIterations = 10;
+        const initialKFactor = 32;
+        
+        // Sort comparisons deterministically by film IDs for consistent results
+        const sortedComparisons = [...allComparisons].sort((a, b) => {
+            const aKey = a.winner.id * 1000000 + a.loser.id;
+            const bKey = b.winner.id * 1000000 + b.loser.id;
+            return aKey - bKey;
+        });
         
         for (let iteration = 0; iteration < maxIterations; iteration++) {
-            let totalChange = 0;
-            
-            // Process comparisons in CONSISTENT order (by winner ID, then loser ID)
-            // This ensures deterministic results while still converging properly
-            const sortedComparisons = [...allComparisons].sort((a, b) => {
-                const aKey = a.winner.id * 1000000 + a.loser.id;
-                const bKey = b.winner.id * 1000000 + b.loser.id;
-                return aKey - bKey;
-            });
+            // Use diminishing K-factor to prevent extreme rating collapse
+            const kFactor = initialKFactor * Math.pow(0.7, iteration);
             
             sortedComparisons.forEach(comparison => {
                 const { winner, loser } = comparison;
                 const ratingWinner = winner.eloRating;
                 const ratingLoser = loser.eloRating;
                 
-                // Use smaller K-factor for convergence (larger would oscillate)
-                const kFactor = 8; // Smaller K for better stability
-                
                 // Winner gets score 1, loser gets score 0
                 const newRatingWinner = this.calculateEloRating(ratingWinner, ratingLoser, 1, kFactor);
                 const newRatingLoser = this.calculateEloRating(ratingLoser, ratingWinner, 0, kFactor);
                 
-                // Track total change for convergence check
-                totalChange += Math.abs(newRatingWinner - ratingWinner);
-                totalChange += Math.abs(newRatingLoser - ratingLoser);
-                
                 winner.eloRating = newRatingWinner;
                 loser.eloRating = newRatingLoser;
             });
-            
-            // Check for convergence
-            if (totalChange < convergenceThreshold) {
-                console.log(`ELO ratings converged after ${iteration + 1} iterations (total change: ${totalChange.toFixed(4)})`);
-                break;
-            }
-            
-            if (iteration === maxIterations - 1) {
-                console.log(`ELO ratings reached max iterations (${maxIterations}) with total change: ${totalChange.toFixed(4)}`);
-            }
         }
+        
+        console.log(`ELO ratings calculated using ${maxIterations} iterations with diminishing K-factor (deterministic order)`);
     }
 
     handleRecalculateElo() {
@@ -1614,7 +1598,7 @@ class FilmRankingApp {
             return;
         }
 
-        if (confirm('Recalculate all ELO ratings based on comparison history?\n\nThis will use the fixed ELO algorithm (K-factor=32, single pass).')) {
+        if (confirm('Recalculate all ELO ratings based on comparison history?\n\nThis will produce consistent, deterministic results each time.')) {
             console.log('Recalculating ELO ratings...');
             this.recalculateEloRatings();
             this.saveData();
