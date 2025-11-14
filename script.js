@@ -1342,12 +1342,6 @@ class FilmRankingApp {
                     </button>
                 </div>
 
-                <div class="detail-edit-section">
-                    <button class="btn btn-secondary detail-edit-btn" onclick="app.showEditFilmModal(${film.id})">
-                        ✏️ Edit Details
-                    </button>
-                </div>
-
                 <div id="detailSections" class="detail-sections" style="${this.detailSectionsHidden ? 'display: none;' : ''}">
                 <div class="matchups-section">
                     <div class="matchups-title">Head-to-Head Record</div>
@@ -1372,6 +1366,12 @@ class FilmRankingApp {
                     <button class="btn btn-danger" onclick="app.deleteFilm(${film.id})">Delete Film</button>
                     ${film.link ? `<button class="btn btn-primary" onclick="window.open('${film.link}', '_blank')">Watch Film</button>` : ''}
                 </div>
+                </div>
+
+                <div class="detail-edit-section">
+                    <button class="btn btn-secondary detail-edit-btn" onclick="app.showEditFilmModal(${film.id})">
+                        ✏️ Edit Details
+                    </button>
                 </div>
             </div>
         `;
