@@ -1286,26 +1286,6 @@ class FilmRankingApp {
                     </div>
                 </div>
 
-                <div class="add-matchup-section">
-                    <div class="matchups-title">Add New Matchup</div>
-                    <div class="add-matchup-controls">
-                        <select id="newMatchupOpponent-${film.id}" class="matchup-select">
-                            <option value="">Select a film to compare with...</option>
-                            ${this.getAvailableOpponents(film).map(opponent => 
-                                `<option value="${opponent.id}">${opponent.title}</option>`
-                            ).join('')}
-                        </select>
-                        <div class="matchup-result-buttons">
-                            <button class="btn btn-success btn-small" onclick="app.addMatchup(${film.id}, document.getElementById('newMatchupOpponent-${film.id}').value, 'win')" title="${film.title} wins">
-                                ${film.title} Wins
-                            </button>
-                            <button class="btn btn-danger btn-small" onclick="app.addMatchup(${film.id}, document.getElementById('newMatchupOpponent-${film.id}').value, 'loss')" title="${film.title} loses">
-                                ${film.title} Loses
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
                 <div class="detail-actions">
                     <button class="btn btn-secondary" onclick="app.editFilm(${film.id})">Edit Film</button>
                     <button class="btn btn-danger" onclick="app.deleteFilm(${film.id})">Delete Film</button>
@@ -1491,67 +1471,6 @@ class FilmRankingApp {
         // If we were in detail view, restore the position to the same film
         if (wasInDetailView && currentFilmId) {
             // Sort films same way as detail view to find new index
-            const sortedFilms = [...this.films].sort((a, b) => (b.eloRating || b.elo || 1200) - (a.eloRating || a.elo || 1200));
-            const newIndex = sortedFilms.findIndex(f => f.id === currentFilmId);
-            if (newIndex !== -1) {
-                this.currentDetailIndex = newIndex;
-            }
-        }
-        
-        this.updateDisplay();
-    }
-
-    getAvailableOpponents(currentFilm) {
-        // Return all films except the current one
-        return this.films.filter(film => film.id !== currentFilm.id);
-    }
-
-    addMatchup(filmId, opponentId, result) {
-        if (!opponentId) {
-            alert('Please select a film to compare with.');
-            return;
-        }
-        
-        const film = this.films.find(f => f.id === filmId);
-        const opponent = this.films.find(f => f.id === parseInt(opponentId));
-        
-        if (!film || !opponent) return;
-        
-        // Ensure both films have comparison objects
-        if (!film.comparisons) film.comparisons = {};
-        if (!opponent.comparisons) opponent.comparisons = {};
-        
-        // If matchup exists and user doesn't want to overwrite, bail
-        if (film.comparisons[opponentId]) {
-            if (!confirm(`A matchup between "${film.title}" and "${opponent.title}" already exists. Do you want to overwrite it?`)) {
-                return;
-            }
-        }
-
-        // Save the current film ID if in detail view to restore position later
-        const wasInDetailView = this.currentView === 'detail';
-        const currentFilmId = wasInDetailView ? filmId : null;
-        
-        // Use centralized setter
-        if (result === 'win') {
-            this.setHeadToHead(film, opponent, 'win');
-            this.showSuccessMessage(`Added matchup: "${film.title}" beats "${opponent.title}"`);
-        } else {
-            this.setHeadToHead(film, opponent, 'loss');
-            this.showSuccessMessage(`Added matchup: "${opponent.title}" beats "${film.title}"`);
-        }
-        
-        // Clear the selection
-        const select = document.getElementById(`newMatchupOpponent-${filmId}`);
-        if (select) select.value = '';
-        
-        // Recalculate rankings and ELO
-        this.recalculateAllRanks();
-        this.recalculateEloRatings();
-        this.saveData();
-        
-        // If we were in detail view, restore the position to the same film
-        if (wasInDetailView && currentFilmId) {
             const sortedFilms = [...this.films].sort((a, b) => (b.eloRating || b.elo || 1200) - (a.eloRating || a.elo || 1200));
             const newIndex = sortedFilms.findIndex(f => f.id === currentFilmId);
             if (newIndex !== -1) {
