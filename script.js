@@ -1427,6 +1427,10 @@ class FilmRankingApp {
         if (!film || !opponent) return;
         
         if (confirm(`Remove the matchup between "${film.title}" and "${opponent.title}"?\n\nThis will delete their head-to-head record.`)) {
+            // Save the current film ID if in detail view to restore position later
+            const wasInDetailView = this.currentView === 'detail';
+            const currentFilmId = wasInDetailView ? filmId : null;
+            
             // Remove the head-to-head consistently
             this.removeHeadToHead(film, opponent);
             
@@ -1434,6 +1438,16 @@ class FilmRankingApp {
             this.recalculateAllRanks();
             this.recalculateEloRatings();
             this.saveData();
+            
+            // If we were in detail view, restore the position to the same film
+            if (wasInDetailView && currentFilmId) {
+                const sortedFilms = [...this.films].sort((a, b) => (b.eloRating || b.elo || 1200) - (a.eloRating || a.elo || 1200));
+                const newIndex = sortedFilms.findIndex(f => f.id === currentFilmId);
+                if (newIndex !== -1) {
+                    this.currentDetailIndex = newIndex;
+                }
+            }
+            
             this.updateDisplay();
             this.showSuccessMessage(`Removed matchup between "${film.title}" and "${opponent.title}"`);
         }
@@ -1444,6 +1458,10 @@ class FilmRankingApp {
         const opponent = this.films.find(f => f.id === opponentId);
         
         if (!film || !opponent) return;
+        
+        // Save the current film ID if in detail view to restore position later
+        const wasInDetailView = this.currentView === 'detail';
+        const currentFilmId = wasInDetailView ? filmId : null;
         
         // Ensure both films have comparison objects
         if (!film.comparisons) film.comparisons = {};
@@ -1469,6 +1487,17 @@ class FilmRankingApp {
         this.recalculateAllRanks();
         this.recalculateEloRatings();
         this.saveData();
+        
+        // If we were in detail view, restore the position to the same film
+        if (wasInDetailView && currentFilmId) {
+            // Sort films same way as detail view to find new index
+            const sortedFilms = [...this.films].sort((a, b) => (b.eloRating || b.elo || 1200) - (a.eloRating || a.elo || 1200));
+            const newIndex = sortedFilms.findIndex(f => f.id === currentFilmId);
+            if (newIndex !== -1) {
+                this.currentDetailIndex = newIndex;
+            }
+        }
+        
         this.updateDisplay();
     }
 
@@ -1499,6 +1528,10 @@ class FilmRankingApp {
             }
         }
 
+        // Save the current film ID if in detail view to restore position later
+        const wasInDetailView = this.currentView === 'detail';
+        const currentFilmId = wasInDetailView ? filmId : null;
+        
         // Use centralized setter
         if (result === 'win') {
             this.setHeadToHead(film, opponent, 'win');
@@ -1516,6 +1549,16 @@ class FilmRankingApp {
         this.recalculateAllRanks();
         this.recalculateEloRatings();
         this.saveData();
+        
+        // If we were in detail view, restore the position to the same film
+        if (wasInDetailView && currentFilmId) {
+            const sortedFilms = [...this.films].sort((a, b) => (b.eloRating || b.elo || 1200) - (a.eloRating || a.elo || 1200));
+            const newIndex = sortedFilms.findIndex(f => f.id === currentFilmId);
+            if (newIndex !== -1) {
+                this.currentDetailIndex = newIndex;
+            }
+        }
+        
         this.updateDisplay();
     }
 
