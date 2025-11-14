@@ -1778,29 +1778,21 @@ class FilmRankingApp {
     }
 
     createEloFilmHTML(film, rank) {
-        const thumbnailStyle = film.thumbnailUrl ? 
-            `background-image: url(${film.thumbnailUrl}); background-size: cover; background-position: center;` : 
-            'background: #f8f9fa;';
-        
+        const thumbnailUrl = film.thumbnailUrl || '';
         const eloRating = Math.round(film.eloRating || 1200);
         const eloClass = this.getEloRatingClass(eloRating);
         
         return `
-            <div class="film-item elo-item">
-                <div class="film-rank elo-rank ${eloClass}">#${rank}</div>
-                <div class="film-thumbnail clickable-thumbnail" style="${thumbnailStyle}" onclick="app.jumpToFilmDetail(${film.id})" title="Click to view details"></div>
-                <div class="film-info">
-                    <div class="film-title">${film.title}</div>
-                    <div class="film-details">
-                        ELO: <span class="elo-rating ${eloClass}">${eloRating}</span> | 
-                        Wins: ${film.wins || 0} | 
-                        Record: ${this.getWinLossRecord(film)}
+            <div class="elo-card" onclick="app.jumpToFilmDetail(${film.id})" title="Click to view ${film.title}">
+                ${thumbnailUrl ? `<div class="elo-card-thumbnail" style="background-image: url(${thumbnailUrl});"></div>` : ''}
+                <div class="elo-card-rank ${eloClass}">#${rank}</div>
+                <div class="elo-card-content">
+                    <div class="elo-card-title">${film.title}</div>
+                    <div class="elo-card-stats">
+                        <span class="elo-card-rating ${eloClass}">${eloRating} ELO</span>
+                        <span class="elo-card-wins">${film.wins || 0}W - ${film.losses || 0}L</span>
+                        <span class="elo-card-record">${this.getWinLossRecord(film)}</span>
                     </div>
-                </div>
-                <div class="film-actions">
-                    <button class="btn btn-danger" onclick="app.deleteFilm(${film.id})">Delete</button>
-                    <button class="btn btn-secondary" onclick="app.editFilm(${film.id})">Edit</button>
-                    ${film.link ? `<button class="btn btn-primary" onclick="window.open('${film.link}', '_blank')">Play</button>` : ''}
                 </div>
             </div>
         `;
