@@ -108,10 +108,12 @@ body {
     background: rgba(20,20,20,0.96);
     border-top: 1.5px solid #232323;
     margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .controls .btn {
-    margin-bottom: 12px;
     border-radius: 10px;
     font-weight: 600;
     text-transform: uppercase;
@@ -119,6 +121,15 @@ body {
     font-size: 13px;
     position: relative;
     overflow: hidden;
+}
+
+.controls .btn-primary {
+    margin-bottom: 20px;
+}
+
+.controls .dropdown-container,
+.controls .btn-secondary {
+    margin-bottom: 0;
 }
 
 .controls .btn::before {
@@ -146,7 +157,6 @@ body {
 .dropdown-container {
     position: relative;
     width: 100%;
-    margin-bottom: 12px;
 }
 
 .dropdown-toggle::after {
