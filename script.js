@@ -1360,12 +1360,6 @@ class FilmRankingApp {
                         </div>
                     </div>
                 </div>
-
-                <div class="detail-actions">
-                    <button class="btn btn-secondary" onclick="app.editFilm(${film.id})">Edit Film</button>
-                    <button class="btn btn-danger" onclick="app.deleteFilm(${film.id})">Delete Film</button>
-                    ${film.link ? `<button class="btn btn-primary" onclick="window.open('${film.link}', '_blank')">Watch Film</button>` : ''}
-                </div>
                 </div>
 
                 <div class="detail-edit-section">
