@@ -1653,6 +1653,20 @@ body {
     transform: translateX(3px);
 }
 
+.clickable-chain-item {
+    cursor: pointer;
+}
+
+.clickable-chain-item:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transform: translateX(5px);
+    background: #f8f9fa;
+}
+
+.clickable-chain-item:active {
+    transform: translateX(3px);
+}
+
 .elo-chain-icon {
     font-size: 1.2rem;
     width: 30px;

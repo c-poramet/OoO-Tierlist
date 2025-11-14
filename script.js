@@ -1384,7 +1384,7 @@ class FilmRankingApp {
             const winClass = this.getEloRatingClass(winElo);
             const winThumbnail = strongestWin.thumbnailUrl || '';
             html += `
-                <div class="elo-chain-item" style="margin-left: ${indent}px;">
+                <div class="elo-chain-item clickable-chain-item" style="margin-left: ${indent}px;" onclick="app.jumpToFilmDetail(${strongestWin.id})" title="Click to view ${strongestWin.title}">
                     <div class="elo-chain-icon win">✅</div>
                     <div class="elo-chain-content">
                         <div class="elo-chain-header">
@@ -1409,7 +1409,7 @@ class FilmRankingApp {
             const lossClass = this.getEloRatingClass(lossElo);
             const lossThumbnail = strongestLoss.thumbnailUrl || '';
             html += `
-                <div class="elo-chain-item" style="margin-left: ${indent}px;">
+                <div class="elo-chain-item clickable-chain-item" style="margin-left: ${indent}px;" onclick="app.jumpToFilmDetail(${strongestLoss.id})" title="Click to view ${strongestLoss.title}">
                     <div class="elo-chain-icon loss">❌</div>
                     <div class="elo-chain-content">
                         <div class="elo-chain-header">
