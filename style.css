@@ -1717,12 +1717,20 @@ body {
     background: #5a6268;
 }
 
-.swap-right {
+.win-card .matchup-swap-btn {
     order: 2;
 }
 
-.swap-left {
+.loss-card .matchup-swap-btn {
     order: 0;
+}
+
+.win-card .matchup-card-content {
+    order: 1;
+}
+
+.loss-card .matchup-card-content {
+    order: 1;
 }
 
 .empty-matchups {
