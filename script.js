@@ -1404,18 +1404,21 @@ class FilmRankingApp {
 
     createMatchupListHTML(films, currentFilmId, isWins) {
         return `
-            <ul class="matchup-list">
+            <div class="matchup-cards">
                 ${films.map(film => `
-                    <li class="matchup-item">
-                        <div class="matchup-thumbnail" style="${film.thumbnailUrl ? `background-image: url(${film.thumbnailUrl}); background-size: cover; background-position: center;` : 'background: #dee2e6;'}"></div>
-                        <div class="matchup-name">${film.title}</div>
-                        <div class="matchup-actions">
-                            <button class="btn-small btn-danger" onclick="app.removeMatchup(${currentFilmId}, ${film.id})" title="Remove this matchup">✕</button>
-                            <button class="btn-small btn-secondary" onclick="app.flipMatchup(${currentFilmId}, ${film.id})" title="Flip result (${isWins ? 'make this a loss' : 'make this a win'})">${isWins ? '⇅' : '⇅'}</button>
+                    <div class="matchup-card ${isWins ? 'win-card' : 'loss-card'}">
+                        ${film.thumbnailUrl ? `<div class="matchup-card-thumbnail" style="background-image: url(${film.thumbnailUrl});"></div>` : ''}
+                        <div class="matchup-card-content">
+                            <div class="matchup-card-title">${film.title}</div>
+                            <div class="matchup-card-stats">
+                                <span class="matchup-elo">${Math.round(film.eloRating || 1200)} ELO</span>
+                                <span class="matchup-record">${film.wins || 0}W - ${film.losses || 0}L</span>
+                            </div>
                         </div>
-                    </li>
+                        <button class="matchup-swap-btn ${isWins ? 'swap-right' : 'swap-left'}" onclick="app.flipMatchup(${currentFilmId}, ${film.id})" title="Flip result">⇅</button>
+                    </div>
                 `).join('')}
-            </ul>
+            </div>
         `;
     }
 
