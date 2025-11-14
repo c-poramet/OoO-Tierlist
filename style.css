@@ -1615,7 +1615,6 @@ body {
     background: #f0f4f8;
     border-radius: 10px;
     padding: 20px;
-    margin-top: 25px;
     border: 1px solid #d1dce5;
     border-left: 4px solid #6f42c1;
 }
@@ -1717,15 +1716,24 @@ body {
     right: 0;
     top: 0;
     bottom: 0;
-    width: 80px;
+    width: 120px;
     background-size: cover;
     background-position: center;
-    opacity: 0.15;
+    opacity: 0.3;
     border-radius: 0 8px 8px 0;
 }
 
 .elo-chain-item:hover .elo-chain-thumbnail {
-    opacity: 0.25;
+    opacity: 0.45;
+}
+
+.workflow-toggle-section {
+    margin-top: 30px;
+    margin-bottom: 10px;
+}
+
+.workflow-sections {
+    margin-top: 15px;
 }
 
 .add-matchup-section {
